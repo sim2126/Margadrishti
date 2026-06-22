@@ -32,7 +32,7 @@ export function SegmentDetail() {
   if (isLoading || !d) return <Empty>Loading segment…</Empty>;
 
   return (
-    <div className="flex flex-col gap-5 overflow-y-auto p-4">
+    <div className="flex h-full flex-col gap-5 overflow-y-auto p-4">
       <div>
         <div className="flex items-start justify-between gap-2">
           <h2 className="text-lg font-semibold leading-tight text-[--color-fg]">

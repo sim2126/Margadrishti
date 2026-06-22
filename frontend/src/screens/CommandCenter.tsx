@@ -22,22 +22,22 @@ export function CommandCenter() {
   const setPanel = useUi((s) => s.setPanel);
 
   return (
-    <div className="flex h-screen flex-col bg-[--color-bg]">
+    <div className="flex h-screen flex-col overflow-hidden bg-[--color-bg]">
       <KpiHeader />
-      <div className="grid min-h-0 flex-1 grid-cols-[320px_1fr_380px]">
+      <div className="grid min-h-0 flex-1 grid-cols-[320px_1fr_380px] grid-rows-[minmax(0,1fr)]">
         {/* Left rail — ranked hotspots */}
-        <aside className="min-h-0 border-r bg-[--color-surface]">
+        <aside className="min-h-0 overflow-hidden border-r bg-[--color-surface]">
           <HotspotList />
         </aside>
 
         {/* Center — the operational picture */}
-        <main className="min-h-0">
+        <main className="min-h-0 overflow-hidden">
           <CommandMap />
         </main>
 
-        {/* Right rail — contextual workspace */}
-        <aside className="flex min-h-0 flex-col border-l bg-[--color-surface]">
-          <div className="flex border-b">
+        {/* Right rail — contextual workspace (scrolls internally, never the page) */}
+        <aside className="flex min-h-0 flex-col overflow-hidden border-l bg-[--color-surface]">
+          <div className="flex shrink-0 border-b">
             {TABS.map((t) => (
               <button
                 key={t.id}
@@ -54,7 +54,7 @@ export function CommandCenter() {
               </button>
             ))}
           </div>
-          <div className="min-h-0 flex-1">
+          <div className="min-h-0 flex-1 overflow-hidden">
             {panel === "detail" && <SegmentDetail />}
             {panel === "whatif" && <WhatIfPanel />}
             {panel === "copilot" && <CopilotPanel />}
