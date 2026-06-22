@@ -1,5 +1,6 @@
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import { H3HexagonLayer } from "@deck.gl/geo-layers";
+import { ScatterplotLayer } from "@deck.gl/layers";
 import { latLngToCell } from "h3-js";
 import { useMemo, useState } from "react";
 import { Map as MapGL, useControl } from "react-map-gl/maplibre";
@@ -50,11 +51,13 @@ export function CommandMap() {
   const zone = useUi((s) => s.zone);
   const selected = useUi((s) => s.selectedSegment);
   const select = useUi((s) => s.select);
+  const sim = useUi((s) => s.sim);
   const theme = useTheme((s) => s.theme);
   const { data, isLoading } = useCii(zone);
   const [hover, setHover] = useState<{ x: number; y: number; hex: Hex } | null>(null);
 
   const hexes = useMemo(() => aggregateToHex(data?.segments ?? []), [data]);
+  const simActive = !!sim;
 
   const layer = new H3HexagonLayer({
     id: "cii-h3",
@@ -67,7 +70,8 @@ export function CommandMap() {
     getFillColor: (d: Hex) => {
       const [r, g, b] = ciiColor(d.cii);
       const sel = d.top.physical_id === selected;
-      return [r, g, b, sel ? 255 : 165] as [number, number, number, number];
+      const a = simActive ? 60 : sel ? 255 : 165; // dim base when a what-if is active
+      return [r, g, b, a] as [number, number, number, number];
     },
     getLineColor: (d: Hex) =>
       (d.top.physical_id === selected ? [255, 255, 255, 255] : [0, 0, 0, 0]) as [number, number, number, number],
@@ -76,7 +80,34 @@ export function CommandMap() {
     onClick: (info) => info.object && select((info.object as Hex).top.physical_id),
     onHover: (info) =>
       setHover(info.object ? { x: info.x, y: info.y, hex: info.object as Hex } : null),
-    updateTriggers: { getFillColor: selected, getLineColor: selected },
+    updateTriggers: { getFillColor: [selected, simActive], getLineColor: selected },
+  });
+
+  // Highlight layer for an active what-if simulation: target + affected downstream.
+  const simPoints = sim
+    ? [
+        ...(sim.target_lat != null && sim.target_lon != null
+          ? [{ position: [sim.target_lon, sim.target_lat], impact: 1, isTarget: true }]
+          : []),
+        ...sim.affected
+          .filter((a) => a.centroid_lat != null && a.centroid_lon != null)
+          .map((a) => ({ position: [a.centroid_lon!, a.centroid_lat!], impact: a.impact, isTarget: false })),
+      ]
+    : [];
+
+  const simLayer = new ScatterplotLayer<{ position: number[]; impact: number; isTarget: boolean }>({
+    id: "sim-impact",
+    data: simPoints,
+    pickable: false,
+    stroked: true,
+    radiusUnits: "pixels",
+    lineWidthMinPixels: 1.5,
+    getPosition: (d) => d.position as [number, number],
+    getRadius: (d) => (d.isTarget ? 11 : 4 + Math.min(1, d.impact * 3) * 8),
+    getFillColor: (d) =>
+      d.isTarget ? [56, 189, 248, 255] : ([...ciiColor(Math.min(1, d.impact * 3)), 220] as [number, number, number, number]),
+    getLineColor: () => [255, 255, 255, 230],
+    updateTriggers: { getRadius: sim?.evidence_id, getFillColor: sim?.evidence_id },
   });
 
   return (
@@ -86,8 +117,15 @@ export function CommandMap() {
         mapStyle={theme === "light" ? BASEMAP_LIGHT : BASEMAP_DARK}
         attributionControl={false}
       >
-        <DeckOverlay layers={[layer]} interleaved />
+        <DeckOverlay layers={simActive ? [layer, simLayer] : [layer]} interleaved />
       </MapGL>
+
+      {simActive && (
+        <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-full border bg-[--color-surface]/90 px-3 py-1 text-xs text-[--color-fg]">
+          What-if active · <span className="text-[#38bdf8]">●</span> blocked segment ·{" "}
+          {sim!.affected.length} downstream affected
+        </div>
+      )}
 
       {isLoading && (
         <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-full border bg-[--color-surface]/90 px-3 py-1 text-xs text-[--color-muted]">

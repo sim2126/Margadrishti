@@ -108,3 +108,52 @@ export interface CopilotResponse {
   model: string;
   provenance: Array<Record<string, unknown>>;
 }
+
+export interface AffectedSegment {
+  physical_id: string;
+  name: string | null;
+  junction: string | null;
+  hop: number;
+  impact: number;
+  centroid_lat: number | null;
+  centroid_lon: number | null;
+}
+
+export interface SimulationResult {
+  evidence_id: string;
+  kind: string;
+  target_segment: string;
+  target_name: string | null;
+  target_lat: number | null;
+  target_lon: number | null;
+  lanes: number;
+  lanes_blocked: number;
+  minutes: number;
+  capacity_before_vph: number;
+  capacity_after_vph: number;
+  capacity_loss_fraction: number;
+  local_impact: number;
+  spillover_index: number;
+  est_vehicle_minutes_affected: number;
+  affected: AffectedSegment[];
+  assumptions: Record<string, unknown>;
+  caveats: string;
+}
+
+export interface TrafficContext {
+  as_of: string;
+  generated_at: string;
+  focus: { type: string; id: string; name: string | null; zone: string | null };
+  horizon_minutes: number;
+  observed: { kind: string; cii: number | null; observed_count: number | null };
+  predicted: { kind: string; risk: number | null; model_version: string | null; note: string };
+  neighborhood: { kind: string; hops: number; segments: Array<{ physical_id: string; name: string | null; hop: number }> };
+  simulation: SimulationResult | null;
+  uncertainty: {
+    cii_risk_is_interim_biased: boolean;
+    learned_model_shipped: boolean;
+    mean_match_confidence: number | null;
+  };
+  data_gaps: string[];
+  provenance: Provenance;
+}

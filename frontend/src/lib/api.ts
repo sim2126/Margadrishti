@@ -5,6 +5,8 @@ import type {
   DeploymentPlanResponse,
   ForecastResponse,
   SegmentDetail,
+  SimulationResult,
+  TrafficContext,
   TrendsResponse,
 } from "./types";
 
@@ -59,4 +61,17 @@ export const useDeploymentPlan = () =>
 export const useCopilot = () =>
   useMutation({
     mutationFn: (body: { question: string; lang?: string }) => post<CopilotResponse>("/copilot/ask", body),
+  });
+
+export const useSimulateBlockage = () =>
+  useMutation({
+    mutationFn: (body: { segment_id: string; lanes_blocked: number; minutes: number }) =>
+      post<SimulationResult>("/simulate/blockage", body),
+  });
+
+export const useSegmentContext = (physicalId: string | null) =>
+  useQuery({
+    enabled: !!physicalId,
+    queryKey: ["context", physicalId],
+    queryFn: () => get<TrafficContext>(`/context/segment/${encodeURIComponent(physicalId!)}`),
   });

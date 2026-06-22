@@ -1,4 +1,4 @@
-import { Map as MapIcon, Sparkles, ShieldCheck } from "lucide-react";
+import { FlaskConical, Map as MapIcon, Sparkles, ShieldCheck } from "lucide-react";
 import { CommandMap } from "@/components/CommandMap";
 import { CopilotPanel } from "@/components/CopilotPanel";
 import { DeploymentPanel } from "@/components/DeploymentPanel";
@@ -6,11 +6,13 @@ import { HotspotList } from "@/components/HotspotList";
 import { KpiHeader } from "@/components/KpiHeader";
 import { SegmentDetail } from "@/components/SegmentDetail";
 import { TimeScrubber } from "@/components/TimeScrubber";
+import { WhatIfPanel } from "@/components/WhatIfPanel";
 import { cn } from "@/lib/utils";
 import { useUi, type PanelTab } from "@/store/ui";
 
 const TABS: Array<{ id: PanelTab; label: string; icon: typeof MapIcon }> = [
   { id: "detail", label: "Detail", icon: MapIcon },
+  { id: "whatif", label: "What-if", icon: FlaskConical },
   { id: "copilot", label: "Copilot", icon: Sparkles },
   { id: "deploy", label: "Deploy", icon: ShieldCheck },
 ];
@@ -54,6 +56,7 @@ export function CommandCenter() {
           </div>
           <div className="min-h-0 flex-1">
             {panel === "detail" && <SegmentDetail />}
+            {panel === "whatif" && <WhatIfPanel />}
             {panel === "copilot" && <CopilotPanel />}
             {panel === "deploy" && <DeploymentPanel />}
           </div>

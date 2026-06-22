@@ -1,4 +1,4 @@
-import { useSegment } from "@/lib/api";
+import { useSegment, useSegmentContext } from "@/lib/api";
 import { ciiCss, ciiLabel } from "@/lib/utils";
 import { useUi } from "@/store/ui";
 import { Badge, StatLabel } from "./ui";
@@ -23,6 +23,7 @@ function WhyBar({ label, value }: { label: string; value: number }) {
 export function SegmentDetail() {
   const id = useUi((s) => s.selectedSegment);
   const { data: d, isLoading } = useSegment(id);
+  const { data: ctx } = useSegmentContext(id);
 
   if (!id)
     return (
@@ -63,6 +64,30 @@ export function SegmentDetail() {
           ))}
         </div>
       </div>
+
+      {ctx && (
+        <div className="rounded-[--radius] border border-[--color-border]/60 bg-[--color-surface-2]/30 p-3">
+          <div className="mb-2 flex items-center gap-2">
+            <StatLabel>Evidence &amp; data gaps</StatLabel>
+            <span className="rounded-full border px-1.5 text-[10px] text-[--color-muted]">observed</span>
+            <span className="rounded-full border px-1.5 text-[10px] text-[--color-muted]">predicted</span>
+            <span className="rounded-full border px-1.5 text-[10px] text-[--color-muted]">simulated</span>
+          </div>
+          {!ctx.uncertainty.learned_model_shipped && (
+            <p className="mb-1 text-[11px] text-[--color-impact-2]">
+              ⚠ Learned model did not beat baselines on both gates → recency baseline in use.
+            </p>
+          )}
+          <ul className="space-y-0.5 text-[11px] text-[--color-muted]">
+            {ctx.data_gaps.map((g, i) => (
+              <li key={i} className="flex gap-1.5">
+                <span className="text-[--color-muted]">·</span>
+                <span>{g}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       <Provenance d={d.provenance} />
     </div>

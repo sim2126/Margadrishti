@@ -33,6 +33,14 @@ DEFAULT_LANES = 1
 HOP_DECAY = 0.55  # spillover attenuation per hop along the network
 
 
+def _optfloat(v) -> float | None:
+    try:
+        f = float(v)
+    except (TypeError, ValueError):
+        return None
+    return None if f != f else f  # drop NaN
+
+
 def _nodes(physical_id: str) -> tuple[str, str]:
     parts = physical_id.split("_")
     return (parts[0], parts[1]) if len(parts) >= 2 else (physical_id, physical_id)
@@ -81,6 +89,8 @@ class AffectedSegment(BaseModel):
     junction: str | None = None
     hop: int
     impact: float  # relative spillover impact (0..1-ish), higher = more affected
+    centroid_lat: float | None = None
+    centroid_lon: float | None = None
 
 
 class SimulationResult(BaseModel):
@@ -88,6 +98,8 @@ class SimulationResult(BaseModel):
     kind: str = "simulated"  # NOT observed/measured
     target_segment: str
     target_name: str | None = None
+    target_lat: float | None = None
+    target_lon: float | None = None
     lanes: int
     lanes_blocked: int
     minutes: int
@@ -144,6 +156,8 @@ def simulate_parking_blockage(
                 AffectedSegment(
                     physical_id=pid, name=nb.get("name"), junction=nb.get("junction"),
                     hop=hop, impact=round(impact, 4),
+                    centroid_lat=_optfloat(nb.get("centroid_lat")),
+                    centroid_lon=_optfloat(nb.get("centroid_lon")),
                 )
             )
             spillover += impact
@@ -156,6 +170,8 @@ def simulate_parking_blockage(
         evidence_id=f"sim-{uuid.uuid4().hex[:8]}",
         target_segment=segment_id,
         target_name=seg.get("name"),
+        target_lat=_optfloat(seg.get("centroid_lat")),
+        target_lon=_optfloat(seg.get("centroid_lon")),
         lanes=lanes,
         lanes_blocked=eff_blocked,
         minutes=minutes,
