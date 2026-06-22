@@ -24,8 +24,12 @@
   --color-border: #232a35;
   --color-muted: #8b97a8;
   --color-fg: #e7ecf3;
-  --color-brand: #3b82f6;
-  --color-brand-fg: #eff6ff;
+  --color-brand: #39bdbc;
+  --color-brand-fg: #061515;
+  --color-logo-road: #f4f7f9;
+  --color-logo-teal: #39bdbc;
+  --color-logo-saffron: #ffb13b;
+  --color-logo-tile: #071e3b;
   color-scheme: dark;
 }
 
@@ -37,8 +41,12 @@ html.light {
   --color-border: #d9dfe9;
   --color-muted: #5a6573;
   --color-fg: #111722;
-  --color-brand: #2563eb;
+  --color-brand: #157f7e;
   --color-brand-fg: #ffffff;
+  --color-logo-road: #202b33;
+  --color-logo-teal: #209a99;
+  --color-logo-saffron: #ffb13b;
+  --color-logo-tile: #f8fafc;
   color-scheme: light;
 }
 

@@ -1,7 +1,8 @@
-import { Activity, Moon, Sun } from "lucide-react";
+import { Moon, Sun } from "lucide-react";
 import { useHealth, useTrends, useZones } from "@/lib/api";
 import { useTheme } from "@/store/theme";
 import { useUi } from "@/store/ui";
+import { BrandMark } from "./BrandLogo";
 import { Button, StatLabel } from "./ui";
 
 export function KpiHeader() {
@@ -21,11 +22,13 @@ export function KpiHeader() {
   return (
     <header className="flex items-center justify-between gap-6 border-b bg-[--color-surface] px-5 py-3">
       <div className="flex items-center gap-3">
-        <div className="flex h-9 w-9 items-center justify-center rounded-[--radius] bg-[--color-brand]/15">
-          <Activity className="h-5 w-5 text-[--color-brand]" />
+        <div className="flex h-10 w-10 items-center justify-center rounded-[--radius] bg-[--color-logo-tile] ring-1 ring-inset ring-[--color-border]">
+          <BrandMark className="h-8 w-8" decorative />
         </div>
         <div>
-          <div className="text-sm font-semibold leading-tight text-[--color-fg]">Margadrishti</div>
+          <div className="text-[15px] font-semibold leading-tight tracking-[-0.01em] text-[--color-fg]">
+            Margadrishti
+          </div>
           <div className="text-[11px] text-[--color-muted]">Command Center · Bengaluru Traffic Police</div>
         </div>
       </div>

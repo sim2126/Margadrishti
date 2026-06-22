@@ -113,6 +113,14 @@ class PostgisRepository:
             {"zone": zone, "limit": limit},
         )
 
+    def all_segments(self, zone: str | None = None) -> pd.DataFrame:
+        where = "WHERE zone = :zone" if zone else ""
+        return self._q(
+            f"""SELECT physical_id, name, junction, highway, zone, betweenness,
+                       centroid_lat, centroid_lon FROM segments_dim {where}""",
+            {"zone": zone} if zone else {},
+        )
+
     def zones(self) -> list[str]:
         df = self._q("SELECT DISTINCT zone FROM segments_dim WHERE zone IS NOT NULL ORDER BY zone")
         return df["zone"].tolist()

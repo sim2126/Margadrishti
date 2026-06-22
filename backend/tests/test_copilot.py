@@ -13,7 +13,10 @@ from margadrishti.copilot.tools import TOOL_SPECS, execute_tool
 from margadrishti.core.config import get_settings
 from tests.conftest import requires_gold
 
-ALLOWED_TOOLS = {"get_segment_cii", "get_forecast", "get_zone_trends", "propose_deployment"}
+ALLOWED_TOOLS = {
+    "get_segment_cii", "get_forecast", "get_zone_trends", "propose_deployment",
+    "get_road_neighborhood", "simulate_parking_blockage", "get_segment_history",
+}
 
 
 def test_tools_are_read_only_allowlist():

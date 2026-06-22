@@ -134,6 +134,17 @@ class GoldRepository:
             [zone, limit],
         )
 
+    def all_segments(self, zone: str | None = None) -> pd.DataFrame:
+        """Full segment universe (road-graph nodes for neighbourhood/simulation).
+        physical_id encodes the two endpoint nodes, so adjacency needs no extra artifact."""
+        where = "WHERE zone = ?" if zone else ""
+        return self._q(
+            f"""SELECT physical_id, name, junction, highway, zone, betweenness,
+                       centroid_lat, centroid_lon
+                FROM read_parquet('{self._paths["dim"]}') {where}""",
+            [zone] if zone else None,
+        )
+
     def zones(self) -> list[str]:
         """All non-null zones present in the served data (analytics view — includes
         sentinel buckets like 'No Police Station')."""

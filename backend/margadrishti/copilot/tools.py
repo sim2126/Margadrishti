@@ -53,6 +53,42 @@ TOOL_SPECS: list[dict] = [
             "required": ["zone"],
         },
     },
+    {
+        "name": "get_road_neighborhood",
+        "description": "k-hop road-network neighbours of a segment — where congestion can "
+                       "propagate. Use to reason about downstream/adjacent junctions.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "segment_id": {"type": "string"},
+                "hops": {"type": "integer", "default": 2},
+            },
+            "required": ["segment_id"],
+        },
+    },
+    {
+        "name": "simulate_parking_blockage",
+        "description": "What-if: illegal parking blocks lane(s) on a segment for some minutes "
+                       "→ MODELLED (not measured) spillover impact on neighbouring segments.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "segment_id": {"type": "string"},
+                "lanes_blocked": {"type": "integer", "default": 1},
+                "minutes": {"type": "integer", "default": 45},
+            },
+            "required": ["segment_id"],
+        },
+    },
+    {
+        "name": "get_segment_history",
+        "description": "Hour-of-week observed-enforcement profile for a segment (when it spikes).",
+        "input_schema": {
+            "type": "object",
+            "properties": {"segment_id": {"type": "string"}},
+            "required": ["segment_id"],
+        },
+    },
 ]
 
 
@@ -78,4 +114,14 @@ def execute_tool(name: str, args: dict[str, Any], svc: MargadrishtiService) -> d
             )
         )
         return r.model_dump()
+    if name == "get_road_neighborhood":
+        return svc.neighborhood(args["segment_id"], hops=int(args.get("hops", 2)))
+    if name == "simulate_parking_blockage":
+        res = svc.simulate_blockage(
+            args["segment_id"], lanes_blocked=int(args.get("lanes_blocked", 1)),
+            minutes=int(args.get("minutes", 45)),
+        )
+        return res.model_dump() if res else {"error": "segment not found"}
+    if name == "get_segment_history":
+        return svc.segment_history(args["segment_id"])
     raise ValueError(f"unknown tool {name}")

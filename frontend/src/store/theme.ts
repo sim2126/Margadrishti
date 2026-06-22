@@ -6,6 +6,9 @@ function apply(t: Theme) {
   const el = document.documentElement;
   el.classList.toggle("light", t === "light");
   el.classList.toggle("dark", t === "dark");
+  document
+    .querySelector<HTMLMetaElement>('meta[name="theme-color"]')
+    ?.setAttribute("content", t === "dark" ? "#071e3b" : "#f4f6fa");
 }
 
 const stored = (localStorage.getItem("margadrishti-theme") as Theme | null) ?? "dark";

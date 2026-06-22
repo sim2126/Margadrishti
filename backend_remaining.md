@@ -43,6 +43,21 @@ not *complete*:
 
 ---
 
+## 2b. Operations-copilot upliftment — status
+**Done (shipped, tested, honest):** what-if flow-impact simulator (`simulate/flow.py`,
+capacity-reduction + k-hop spillover, labelled simulated/evidence-id), Traffic Context
+Compiler (`context/compiler.py`, observed/predicted/simulated/missing + data_gaps +
+uncertainty), road-neighbourhood / segment-history copilot tools, routes
+(`/simulate/blockage`, `/segments/{id}/neighborhood`, `/context/segment/{id}`).
+**Still open:**
+- [ ] Validate the simulator's spillover against a free **speed API** on a few corridors
+      (turns "simulated" into "correlated"; still not causal).
+- [ ] **Closed learning loop**: a replayed matched-control intervention demo. Limited by
+      data — we can measure change in *observed enforcement*, not flow, until a live feed
+      exists; frame honestly.
+- [ ] Deliberately **deferred** (no measured need yet): analytical code sandbox, external
+      institutional-memory store, weather/events/SOP retrieval, SUMO/TraCI, multi-agent.
+
 ## 3. Optimiser realism (retire the "priority utility" caveat)
 - [ ] Police-station **depots** instead of a virtual zone centroid.
 - [ ] **Road-network travel times** (OSRM/Valhalla matrix) instead of straight-line haversine.

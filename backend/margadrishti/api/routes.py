@@ -5,8 +5,11 @@ no model code. Static paths are declared before parameterised ones to avoid coll
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from margadrishti.api.deps import get_service
+from margadrishti.context.compiler import TrafficContext
+from margadrishti.simulate.flow import SimulationResult
 from margadrishti.api.models import (
     CiiMapResponse,
     DeploymentPlanRequest,
@@ -18,6 +21,13 @@ from margadrishti.api.models import (
 from margadrishti.api.services import MargadrishtiService, UnknownZoneError
 
 router = APIRouter()
+
+
+class BlockageRequest(BaseModel):
+    segment_id: str
+    lanes_blocked: int = Field(default=1, ge=1, le=4)
+    minutes: int = Field(default=45, ge=5, le=240)
+    hops: int = Field(default=2, ge=1, le=4)
 
 
 @router.get("/segments/cii", response_model=CiiMapResponse, tags=["map"])
@@ -60,6 +70,41 @@ def deployment_plan(
             status_code=422,
             detail={"error": f"unknown zone {e.zone!r}", "valid_zones": e.valid},
         ) from e
+
+
+@router.get("/segments/{physical_id}/neighborhood", tags=["graph"])
+def segment_neighborhood(
+    physical_id: str, hops: int = Query(2, ge=1, le=4), svc: MargadrishtiService = Depends(get_service)
+) -> dict:
+    return svc.neighborhood(physical_id, hops=hops)
+
+
+@router.get("/context/segment/{physical_id}", response_model=TrafficContext, tags=["context"])
+def segment_context(
+    physical_id: str,
+    simulate: bool = False,
+    lanes_blocked: int = Query(1, ge=1, le=4),
+    minutes: int = Query(45, ge=5, le=240),
+    svc: MargadrishtiService = Depends(get_service),
+) -> TrafficContext:
+    ctx = svc.segment_context(
+        physical_id, run_simulation=simulate, lanes_blocked=lanes_blocked, minutes=minutes
+    )
+    if ctx is None:
+        raise HTTPException(status_code=404, detail="segment not found")
+    return ctx
+
+
+@router.post("/simulate/blockage", response_model=SimulationResult, tags=["simulate"])
+def simulate_blockage(
+    req: BlockageRequest, svc: MargadrishtiService = Depends(get_service)
+) -> SimulationResult:
+    res = svc.simulate_blockage(
+        req.segment_id, lanes_blocked=req.lanes_blocked, minutes=req.minutes, hops=req.hops
+    )
+    if res is None:
+        raise HTTPException(status_code=404, detail="segment not found")
+    return res
 
 
 @router.get("/segments/{physical_id}", response_model=SegmentDetail, tags=["map"])

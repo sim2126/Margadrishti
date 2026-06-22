@@ -84,3 +84,27 @@ def test_deployment_valid_zone_plan(client):
 
 def test_segment_detail_404(client):
     assert client.get("/segments/does_not_exist").status_code == 404
+
+
+def test_neighborhood_and_simulation_and_context(client):
+    # pick a real segment id from the CII list
+    pid = client.get("/segments/cii?limit=1").json()["segments"][0]["physical_id"]
+
+    nb = client.get(f"/segments/{pid}/neighborhood?hops=2").json()
+    assert nb["found"] is True and "neighbors" in nb
+
+    sim = client.post("/simulate/blockage", json={"segment_id": pid, "lanes_blocked": 1, "minutes": 45})
+    assert sim.status_code == 200
+    body = sim.json()
+    assert body["kind"] == "simulated"
+    assert body["capacity_after_vph"] <= body["capacity_before_vph"]
+    assert "not measured flow" in body["caveats"].lower()
+
+    ctx = client.get(f"/context/segment/{pid}?simulate=true").json()
+    assert ctx["observed"]["kind"] == "observed"
+    assert ctx["simulation"]["kind"] == "simulated"
+    assert any("flow/speed" in g for g in ctx["data_gaps"])
+
+
+def test_simulate_unknown_segment_404(client):
+    assert client.post("/simulate/blockage", json={"segment_id": "nope_0"}).status_code == 404

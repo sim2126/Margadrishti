@@ -3,12 +3,17 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#071e3b" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>Margadrishti — Command Center</title>
     <script>
       // Apply persisted theme before paint to avoid a flash of the wrong theme.
       (function () {
         var t = localStorage.getItem("margadrishti-theme") || "dark";
         document.documentElement.classList.add(t);
+        document
+          .querySelector('meta[name="theme-color"]')
+          .setAttribute("content", t === "dark" ? "#071e3b" : "#f4f6fa");
       })();
     </script>
   </head>

@@ -25,8 +25,10 @@ from margadrishti.api.models import (
     ZoneTrend,
 )
 from margadrishti.api.repository import GoldRepository
+from margadrishti.context.compiler import TrafficContext, build_segment_context
 from margadrishti.core.versioning import now_rfc3339
 from margadrishti.optimize.deployment import Stop, optimise_routes
+from margadrishti.simulate.flow import SimulationResult, k_hop_neighborhood, simulate_parking_blockage
 
 _CII_NOTE = "CII is a prioritisation proxy, not a causal congestion measure."
 
@@ -180,4 +182,47 @@ class MargadrishtiService:
             method_caveats=result.method_caveats,
             requires_human_approval=result.requires_human_approval,
             provenance=self._provenance(),
+        )
+
+    # --- upliftment: graph context, what-if simulation, evidence-kinded context -------
+    def neighborhood(self, segment_id: str, hops: int = 2) -> dict:
+        """k-hop road-network neighbourhood of a segment (congestion propagates here)."""
+        segs = self.repo.all_segments()
+        if segment_id not in set(segs["physical_id"]):
+            return {"segment_id": segment_id, "found": False, "neighbors": []}
+        names = segs.set_index("physical_id")["name"].to_dict()
+        nbrs = k_hop_neighborhood(segment_id, segs, hops)
+        return {
+            "segment_id": segment_id,
+            "found": True,
+            "hops": hops,
+            "neighbors": [{"physical_id": p, "name": names.get(p), "hop": h} for p, h in nbrs],
+            "provenance": self._provenance().model_dump(),
+        }
+
+    def simulate_blockage(
+        self, segment_id: str, lanes_blocked: int = 1, minutes: int = 45, hops: int = 2
+    ) -> SimulationResult | None:
+        """What-if: illegal parking blocks lane(s) on a segment → modelled spillover."""
+        segs = self.repo.all_segments()
+        return simulate_parking_blockage(
+            segment_id, segs, lanes_blocked=lanes_blocked, minutes=minutes, hops=hops
+        )
+
+    def segment_history(self, segment_id: str) -> dict:
+        """Hour-of-week observed-enforcement profile for a segment (when, not just where)."""
+        df = self.repo.hour_of_week(segment_id)
+        return {
+            "segment_id": segment_id,
+            "hour_of_week": [{"hour_of_week": int(r.hour_of_week), "count": int(r.count)} for r in df.itertuples()],
+            "provenance": self._provenance().model_dump(),
+        }
+
+    def segment_context(
+        self, segment_id: str, *, run_simulation: bool = False, lanes_blocked: int = 1, minutes: int = 45
+    ) -> TrafficContext | None:
+        """Evidence-kinded Traffic Context for one segment (observed/predicted/simulated/missing)."""
+        return build_segment_context(
+            self.repo, segment_id, run_simulation=run_simulation,
+            lanes_blocked=lanes_blocked, minutes=minutes,
         )
