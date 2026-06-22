@@ -1,0 +1,66 @@
+@import "tailwindcss";
+
+/* ParkIQ command-center design system. Dark, data-dense, one warm accent ramp for
+   impact intensity (low → critical). Inter/system font, high contrast, operational. */
+@theme {
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: ui-monospace, "JetBrains Mono", "SF Mono", monospace;
+
+  /* Surfaces (near-black command room) */
+  --color-bg: #0a0c10;
+  --color-surface: #11151c;
+  --color-surface-2: #161b24;
+  --color-border: #232a35;
+  --color-muted: #8b97a8;
+  --color-fg: #e7ecf3;
+
+  /* Brand / interactive (cool slate-blue, not glossy) */
+  --color-brand: #3b82f6;
+  --color-brand-fg: #eff6ff;
+
+  /* Impact ramp — calm → critical (used for CII intensity) */
+  --color-impact-0: #1f6feb;
+  --color-impact-1: #4cc38a;
+  --color-impact-2: #e3b341;
+  --color-impact-3: #f0883e;
+  --color-impact-4: #f85149;
+
+  --radius: 0.65rem;
+}
+
+* {
+  border-color: var(--color-border);
+}
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "cv02", "cv03", "cv04", "tnum";
+}
+
+/* Subtle scrollbars to keep the command-center aesthetic */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* MapLibre attribution toned down for dark UI */
+.maplibregl-ctrl-attrib,
+.maplibregl-ctrl-bottom-right {
+  opacity: 0.5;
+  font-size: 10px;
+}

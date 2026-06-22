@@ -1,0 +1,51 @@
+[project]
+name = "parkiq"
+version = "0.1.0"
+description = "Parking Intelligence for Targeted Enforcement — Bengaluru Traffic Police"
+requires-python = ">=3.11"
+dependencies = [
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "pandera>=0.18",          # dataframe schema validation
+    "pandas>=2.2",
+    "duckdb>=0.10",           # reproducible offline ETL / demo fallback
+    "pyarrow>=15.0",          # parquet
+    "h3>=4.0",                # aggregation / rendering index
+    "osmnx>=2.0,<3",          # directed OSM segments (v2 graph_from_bbox signature)
+    "networkx>=3.2",
+    "lightgbm>=4.3",
+    "scikit-learn>=1.4",
+    "ortools>=9.9",           # constrained deployment optimisation
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "psycopg[binary]>=3.1",   # PostGIS serving
+    "geoalchemy2>=0.15",
+    "sqlalchemy>=2.0",
+    "anthropic>=0.40",        # copilot (model IDs from env, never hard-coded)
+    "structlog>=24.1",
+    "celery>=5.3",            # worker/scheduler (broker: redis)
+    "redis>=5.0",
+]
+
+[project.optional-dependencies]
+gnn = ["torch>=2.2", "torch-geometric>=2.5"]   # ST-GNN headline model (heavy; optional)
+dev = ["pytest>=8.0", "pytest-cov>=5.0", "ruff>=0.4", "mypy>=1.9", "hypothesis>=6.100"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+strict = true
+plugins = ["pydantic.mypy"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.hatch.build.targets.wheel]
+packages = ["parkiq"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

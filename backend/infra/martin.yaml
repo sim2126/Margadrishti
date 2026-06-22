@@ -1,0 +1,15 @@
+# Martin vector-tile server — serves PostGIS geometry as MVT at city scale (never
+# city-scale GeoJSON through FastAPI). Auto-publishes the tiles_cii view (geometry +
+# CII + label fields) and segments_dim. Backed by the GIST index on segments_dim.geom.
+listen_addresses: "0.0.0.0:3000"
+
+postgres:
+  # Martin expands ${VAR} (with :- default) before parsing the config.
+  connection_string: ${POSTGIS_DSN:-postgresql://parkiq:parkiq@postgis:5432/parkiq}
+  pool_size: 20
+  auto_publish:
+    from_schemas:
+      - public
+    tables:
+      source_id_format: "{table}"
+      # Geometry columns are auto-detected; tiles_cii.geom and segments_dim.geom publish.
