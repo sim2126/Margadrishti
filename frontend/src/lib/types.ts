@@ -1,4 +1,4 @@
-// Mirrors the backend response models (parkiq/api/models.py). Provenance travels with
+// Mirrors the backend response models (margadrishti/api/models.py). Provenance travels with
 // every analytical payload so the UI can always show source / as-of / versions.
 
 export interface Provenance {

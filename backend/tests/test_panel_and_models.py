@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import numpy as np
 
-from parkiq.features.build import PANEL_FEATURES, build_daily_panel
-from parkiq.models.baselines import (
+from margadrishti.features.build import PANEL_FEATURES, build_daily_panel
+from margadrishti.models.baselines import (
     DayOfWeekFrequency,
     HistoricalFrequency,
     RecencyWeightedFrequency,
 )
-from parkiq.models.base import to_segment_risk
-from parkiq.models.evaluate import beats_baselines, rolling_origin_evaluate
-from parkiq.models.lightgbm_model import LightGBMForecaster
+from margadrishti.models.base import to_segment_risk
+from margadrishti.models.evaluate import beats_baselines, rolling_origin_evaluate
+from margadrishti.models.lightgbm_model import LightGBMForecaster
 
 
 def test_panel_is_dense_and_leakage_safe(synthetic):
@@ -68,7 +68,7 @@ def test_rolling_origin_returns_finite_metrics(synthetic):
 
 
 def test_beats_baselines_logic():
-    from parkiq.models.evaluate import EvalReport
+    from margadrishti.models.evaluate import EvalReport
 
     base = [EvalReport("b", {25: 0.2}, {25: 0.1}, 0.10)]
     better = EvalReport("m", {25: 0.3}, {25: 0.2}, 0.15)

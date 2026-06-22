@@ -1,4 +1,4 @@
-# ParkIQ Frontend — Command Center
+# Margadrishti Frontend — Command Center
 
 Dark, data-dense command-center UI for the Bengaluru Traffic Police. Map-first single
 operational picture: **where + why + how bad**, on one screen.
@@ -37,7 +37,7 @@ npm run dev                   # http://localhost:5173
 npm run build                 # typecheck + production build
 ```
 
-Point `VITE_API_URL` at the running ParkIQ API (`docker compose up`, or `make api`).
+Point `VITE_API_URL` at the running Margadrishti API (`docker compose up`, or `make api`).
 
 ## Honest notes
 

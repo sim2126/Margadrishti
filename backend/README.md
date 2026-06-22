@@ -1,11 +1,11 @@
-# ParkIQ Backend
+# Margadrishti Backend
 
 Layered, modular Python backend. Dependencies flow **one direction only** — a lower
 layer never imports a higher one. Every layer is independently testable behind a typed
 interface. See the root [`CLAUDE.md`](../CLAUDE.md) for the binding engineering/model rules.
 
 ```
-parkiq/
+margadrishti/
 ├── core/         # config, schemas, time, storage, versioning, jobs, celery_app  (depends on nothing)
 ├── ingestion/    # raw CSV → validated typed records → bronze Parquet (+ PII split)
 ├── geo/          # OSM physical road segments · H3 attachment · point→segment map-matching
@@ -29,9 +29,9 @@ worker.py · scheduler.py · core/celery_app.py   # process types (direct CLI + 
 | **Tiles** (Martin) | MVT vector tiles at city scale | PostGIS `tiles_cii`/`segments_dim` |
 
 - **Production serving tier:** PostGIS (typed tables, GIST spatial index, zone-scoped
-  row-level security). The API selects this when `PARKIQ_OFFLINE=false`.
+  row-level security). The API selects this when `MARGA_OFFLINE=false`.
 - **Reproducibility/CI tier:** versioned Parquet + DuckDB — ETL/tests run with no
-  external services. Same repository interface; selected when `PARKIQ_OFFLINE=true`.
+  external services. Same repository interface; selected when `MARGA_OFFLINE=true`.
 
 ## Core design decisions (and why)
 

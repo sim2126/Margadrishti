@@ -1,4 +1,4 @@
-# ParkIQ — Remaining Backend Work
+# Margadrishti — Remaining Backend Work
 
 Status as of the production-hardening pass. The offline/CI tier is verified (27 tests).
 The container path is blocker-fixed and statically validated but **not yet executed
@@ -18,18 +18,18 @@ The PostGIS / Celery / Martin path has never run live. After `docker compose up 
 ---
 
 ## 1. Authentication & authorization (blocker for multi-role deployment)
-RLS is now *enforceable* (non-owner `parkiq_api` role, `security_invoker` tiles view) but
+RLS is now *enforceable* (non-owner `margadrishti_api` role, `security_invoker` tiles view) but
 not *complete*:
 - [ ] **OIDC/JWT auth** on the API (command vs zone-inspector vs field-constable roles).
-- [ ] Build **`ParkIQService` per request** with the caller's authenticated scopes
+- [ ] Build **`MargadrishtiService` per request** with the caller's authenticated scopes
       (the current `lru_cache` singleton in `api/deps.py` can't carry per-request identity).
-- [ ] **Fail-closed RLS**: unset/empty `parkiq.zone_scope` must return *no* rows; the API
+- [ ] **Fail-closed RLS**: unset/empty `margadrishti.zone_scope` must return *no* rows; the API
       sets the scope from the verified token. Today the policy is fail-open.
 - [ ] **Command vs field role split**; field surfaces only ever see their jurisdiction.
 - [ ] **Tiles**: serve field-scoped tiles behind an authenticated proxy (or per-zone source);
       Martin currently connects as owner and shows all zones (acceptable only for command).
 - [ ] **Copilot**: it is unauthenticated. The LLM path is gated OFF by default
-      (`PARKIQ_COPILOT_LLM_ENABLED`); before enabling, add auth + rate limiting + per-key
+      (`MARGA_COPILOT_LLM_ENABLED`); before enabling, add auth + rate limiting + per-key
       budget so the Anthropic key can't be drained.
 
 ---
@@ -38,7 +38,7 @@ not *complete*:
 - [ ] Replace live **Overpass** graph download with a pinned **Geofabrik** extract (via
       `pyrosm`) so `road_network_version` is truly reproducible and first-run is robust.
 - [ ] Run and commit the **full-city** ETL manifest as the canonical artifact (set
-      `PARKIQ_ETL_BBOX=""`); validate runtime/memory at city scale before claiming it.
+      `MARGA_ETL_BBOX=""`); validate runtime/memory at city scale before claiming it.
 - [ ] Pin image **@sha256 digests** + add a Python **lockfile** (uv/pip-tools) for frozen builds.
 
 ---

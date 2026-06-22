@@ -1,9 +1,9 @@
-# ParkIQ
+# Margadrishti
 
 **Parking Intelligence for Targeted Enforcement** — built for the Bengaluru Traffic Police
 (Flipkart GRID, Theme 1: Parking-Induced Congestion).
 
-ParkIQ turns the city's existing parking-violation records into a deployable enforcement
+Margadrishti turns the city's existing parking-violation records into a deployable enforcement
 tool: it detects illegal-parking hotspots, quantifies their congestion impact, forecasts
 risk, and recommends where to send patrols — all on data the city already collects, with
 no new cameras or sensors.

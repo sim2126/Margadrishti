@@ -1,4 +1,4 @@
-# ParkIQ production runtime — one command (`docker compose up --build`) to the full stack:
+# Margadrishti production runtime — one command (`docker compose up --build`) to the full stack:
 # PostGIS (serving) · Redis (broker) · API · Celery worker · Celery beat · Martin tiles.
 #
 # Hardening notes:
@@ -12,18 +12,18 @@
 x-backend: &backend
   build: ./backend
   environment: &backend-env
-    PARKIQ_OFFLINE: "false"
-    POSTGIS_DSN: "postgresql://parkiq:${POSTGIS_PASSWORD:-parkiq}@postgis:5432/parkiq"
-    REDIS_URL: "redis://:${REDIS_PASSWORD:-parkiq}@redis:6379/0"
-    PARKIQ_DATA_ROOT: "/app/data"
+    MARGA_OFFLINE: "false"
+    POSTGIS_DSN: "postgresql://margadrishti:${POSTGIS_PASSWORD:-margadrishti}@postgis:5432/margadrishti"
+    REDIS_URL: "redis://:${REDIS_PASSWORD:-margadrishti}@redis:6379/0"
+    MARGA_DATA_ROOT: "/app/data"
     RAW_VIOLATIONS_CSV: "/data/jan to may police violation_anonymized791b166.csv"
     # Bounded first-run extent (Koramangala). Non-colon default applies only when UNSET;
-    # to run the full city export PARKIQ_ETL_BBOX="" (empty but set).
-    PARKIQ_ETL_BBOX: "${PARKIQ_ETL_BBOX-77.60,12.91,77.65,12.95}"
+    # to run the full city export MARGA_ETL_BBOX="" (empty but set).
+    MARGA_ETL_BBOX: "${MARGA_ETL_BBOX-77.60,12.91,77.65,12.95}"
     ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
     CLAUDE_MODEL_REASONING: "${CLAUDE_MODEL_REASONING:-claude-opus-4-8}"
     CLAUDE_MODEL_FAST: "${CLAUDE_MODEL_FAST:-claude-sonnet-4-6}"
-    PARKIQ_PII_SALT: "${PARKIQ_PII_SALT:-change-me}"
+    MARGA_PII_SALT: "${MARGA_PII_SALT:-change-me}"
   depends_on:
     postgis: {condition: service_healthy}
     redis: {condition: service_healthy}
@@ -37,22 +37,22 @@ services:
   postgis:
     image: postgis/postgis:16-3.4
     environment:
-      POSTGRES_USER: parkiq
-      POSTGRES_PASSWORD: "${POSTGIS_PASSWORD:-parkiq}"
-      POSTGRES_DB: parkiq
+      POSTGRES_USER: margadrishti
+      POSTGRES_PASSWORD: "${POSTGIS_PASSWORD:-margadrishti}"
+      POSTGRES_DB: margadrishti
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U parkiq"]
+      test: ["CMD-SHELL", "pg_isready -U margadrishti"]
       interval: 5s
       timeout: 3s
       retries: 10
 
   redis:
     image: redis:7.4-alpine
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-parkiq}"]
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-margadrishti}"]
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-parkiq} ping | grep -q PONG"]
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-margadrishti} ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -60,7 +60,7 @@ services:
   # One-shot: ETL → train → publish to PostGIS, then exit. Populates serving tables.
   bootstrap:
     <<: *backend
-    command: python -m parkiq.worker all
+    command: python -m margadrishti.worker all
     restart: "no"
     volumes: *writer-volumes
 
@@ -70,8 +70,8 @@ services:
     # never the raw CSVs or _restricted PII.
     environment:
       <<: *backend-env
-      POSTGIS_READ_DSN: "postgresql://parkiq_api:${PARKIQ_API_PASSWORD:-parkiq_api}@postgis:5432/parkiq"
-    command: uvicorn parkiq.api.app:app --host 0.0.0.0 --port 8000 --workers 2
+      POSTGIS_READ_DSN: "postgresql://margadrishti_api:${MARGA_API_PASSWORD:-margadrishti_api}@postgis:5432/margadrishti"
+    command: uvicorn margadrishti.api.app:app --host 0.0.0.0 --port 8000 --workers 2
     volumes:
       - ./backend/data/gold:/app/data/gold:ro
     ports: ["8000:8000"]
@@ -82,19 +82,19 @@ services:
 
   worker:
     <<: *backend
-    command: celery -A parkiq.core.celery_app worker --loglevel=info -Q parkiq --concurrency=1
+    command: celery -A margadrishti.core.celery_app worker --loglevel=info -Q margadrishti --concurrency=1
     volumes: *writer-volumes
 
   scheduler:
     <<: *backend
-    command: celery -A parkiq.core.celery_app beat --loglevel=info
+    command: celery -A margadrishti.core.celery_app beat --loglevel=info
     volumes: *writer-volumes
 
   tiles:
     image: ghcr.io/maplibre/martin:v0.13.0
     command: ["--config", "/config/martin.yaml"]
     environment:
-      POSTGIS_DSN: "postgresql://parkiq:${POSTGIS_PASSWORD:-parkiq}@postgis:5432/parkiq"
+      POSTGIS_DSN: "postgresql://margadrishti:${POSTGIS_PASSWORD:-margadrishti}@postgis:5432/margadrishti"
     volumes:
       - ./backend/infra/martin.yaml:/config/martin.yaml:ro
     depends_on:

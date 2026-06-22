@@ -8,9 +8,9 @@ import types
 
 import pytest
 
-from parkiq.copilot import agent
-from parkiq.copilot.tools import TOOL_SPECS, execute_tool
-from parkiq.core.config import get_settings
+from margadrishti.copilot import agent
+from margadrishti.copilot.tools import TOOL_SPECS, execute_tool
+from margadrishti.core.config import get_settings
 from tests.conftest import requires_gold
 
 ALLOWED_TOOLS = {"get_segment_cii", "get_forecast", "get_zone_trends", "propose_deployment"}
@@ -33,7 +33,7 @@ def test_mocked_claude_tool_loop(monkeypatch):
     """A fake Anthropic client that issues one tool_use then a final text answer.
     Verifies the loop executes tools and returns the model's text."""
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
-    monkeypatch.setenv("PARKIQ_COPILOT_LLM_ENABLED", "true")
+    monkeypatch.setenv("MARGA_COPILOT_LLM_ENABLED", "true")
     get_settings.cache_clear()
 
     captured = {}
@@ -88,12 +88,12 @@ def test_offline_fallback_answers_with_provenance(monkeypatch):
 
 
 @pytest.mark.skipif(
-    not (os.getenv("ANTHROPIC_API_KEY") and os.getenv("PARKIQ_LIVE") == "1"),
-    reason="live Claude test; set ANTHROPIC_API_KEY and PARKIQ_LIVE=1",
+    not (os.getenv("ANTHROPIC_API_KEY") and os.getenv("MARGA_LIVE") == "1"),
+    reason="live Claude test; set ANTHROPIC_API_KEY and MARGA_LIVE=1",
 )
 @requires_gold
 def test_live_claude_integration(monkeypatch):
-    monkeypatch.setenv("PARKIQ_COPILOT_LLM_ENABLED", "true")
+    monkeypatch.setenv("MARGA_COPILOT_LLM_ENABLED", "true")
     get_settings.cache_clear()
     ans = agent.ask("Which zone has the highest observed enforcement density?")
     assert ans.model != "offline-fallback"

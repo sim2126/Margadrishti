@@ -9,10 +9,10 @@ import os
 import pandas as pd
 import pytest
 
-os.environ.setdefault("PARKIQ_PII_SALT", "test-salt")
-os.environ.setdefault("PARKIQ_DATA_ROOT", "./data")
+os.environ.setdefault("MARGA_PII_SALT", "test-salt")
+os.environ.setdefault("MARGA_DATA_ROOT", "./data")
 
-from parkiq.core.config import get_settings  # noqa: E402
+from margadrishti.core.config import get_settings  # noqa: E402
 
 
 @pytest.fixture(autouse=True)

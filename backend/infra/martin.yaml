@@ -5,7 +5,7 @@ listen_addresses: "0.0.0.0:3000"
 
 postgres:
   # Martin expands ${VAR} (with :- default) before parsing the config.
-  connection_string: ${POSTGIS_DSN:-postgresql://parkiq:parkiq@postgis:5432/parkiq}
+  connection_string: ${POSTGIS_DSN:-postgresql://margadrishti:margadrishti@postgis:5432/margadrishti}
   pool_size: 20
   auto_publish:
     from_schemas:

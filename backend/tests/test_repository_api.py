@@ -6,7 +6,7 @@ import re
 
 import pytest
 
-from parkiq.api.repository import GoldRepository
+from margadrishti.api.repository import GoldRepository
 from tests.conftest import requires_gold
 
 pytestmark = requires_gold
@@ -38,7 +38,7 @@ def test_cii_zone_filter_and_injection_safe():
 def client():
     from fastapi.testclient import TestClient
 
-    from parkiq.api.app import app
+    from margadrishti.api.app import app
 
     return TestClient(app)
 

@@ -7,8 +7,8 @@ import warnings
 import pandas as pd
 import pytest
 
-from parkiq.cii.score import DEFAULT_WEIGHTS, PLANNED_COMPONENTS, score_cii
-from parkiq.optimize.deployment import Stop, _solve_greedy, optimise_routes
+from margadrishti.cii.score import DEFAULT_WEIGHTS, PLANNED_COMPONENTS, score_cii
+from margadrishti.optimize.deployment import Stop, _solve_greedy, optimise_routes
 
 
 def _seg_features():

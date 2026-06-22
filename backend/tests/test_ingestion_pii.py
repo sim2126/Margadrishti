@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from parkiq.ingestion.violations import PII_COLUMNS, load_violations
+from margadrishti.ingestion.violations import PII_COLUMNS, load_violations
 
 RAW = """id,latitude,longitude,location,vehicle_number,vehicle_type,description,violation_type,offence_code,created_datetime,closed_datetime,modified_datetime,device_id,created_by_id,center_code,police_station,data_sent_to_scita,junction_name,action_taken_timestamp,data_sent_to_scita_timestamp,updated_vehicle_number,updated_vehicle_type,validation_status,validation_timestamp
 FKID0,12.93,77.62,"Koramangala",KA01AB1234,CAR,,"[""WRONG PARKING""]","[112]",2023-11-20 00:28:46+00,,,DEV1,OFF1,9,Madiwala,TRUE,No Junction,,,,,approved,

@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from parkiq.core.timeutils import hour_of_week_ist, ist_calendar_features, to_ist
+from margadrishti.core.timeutils import hour_of_week_ist, ist_calendar_features, to_ist
 
 
 def test_utc_to_ist_offset():

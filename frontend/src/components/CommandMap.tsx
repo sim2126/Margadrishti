@@ -7,10 +7,12 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import { useCii } from "@/lib/api";
 import type { CiiSegment } from "@/lib/types";
 import { ciiColor } from "@/lib/utils";
+import { useTheme } from "@/store/theme";
 import { useUi } from "@/store/ui";
 
-// Keyless dark basemap — command-center aesthetic, no API key required.
-const BASEMAP = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+// Keyless CARTO basemaps — dark-matter for the dark theme, positron for light.
+const BASEMAP_DARK = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
+const BASEMAP_LIGHT = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 const H3_RES = 9; // ~170m cells: readable city-scale heatmap
 const INITIAL = { longitude: 77.625, latitude: 12.932, zoom: 12.4, pitch: 48, bearing: -18 };
 
@@ -48,6 +50,7 @@ export function CommandMap() {
   const zone = useUi((s) => s.zone);
   const selected = useUi((s) => s.selectedSegment);
   const select = useUi((s) => s.select);
+  const theme = useTheme((s) => s.theme);
   const { data, isLoading } = useCii(zone);
   const [hover, setHover] = useState<{ x: number; y: number; hex: Hex } | null>(null);
 
@@ -78,7 +81,11 @@ export function CommandMap() {
 
   return (
     <div className="relative h-full w-full">
-      <MapGL initialViewState={INITIAL} mapStyle={BASEMAP} attributionControl={false}>
+      <MapGL
+        initialViewState={INITIAL}
+        mapStyle={theme === "light" ? BASEMAP_LIGHT : BASEMAP_DARK}
+        attributionControl={false}
+      >
         <DeckOverlay layers={[layer]} interleaved />
       </MapGL>
 
@@ -90,7 +97,7 @@ export function CommandMap() {
       {!isLoading && hexes.length === 0 && (
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[--radius] border bg-[--color-surface]/95 px-5 py-4 text-center text-sm text-[--color-muted]">
           No CII data. Point <code className="text-[--color-fg]">VITE_API_URL</code> at the running
-          ParkIQ API and ensure the pipeline has published.
+          Margadrishti API and ensure the pipeline has published.
         </div>
       )}
       {hover && (

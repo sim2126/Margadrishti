@@ -1,7 +1,8 @@
-import { Activity } from "lucide-react";
+import { Activity, Moon, Sun } from "lucide-react";
 import { useHealth, useTrends, useZones } from "@/lib/api";
+import { useTheme } from "@/store/theme";
 import { useUi } from "@/store/ui";
-import { StatLabel } from "./ui";
+import { Button, StatLabel } from "./ui";
 
 export function KpiHeader() {
   const zone = useUi((s) => s.zone);
@@ -9,6 +10,8 @@ export function KpiHeader() {
   const { data: trends } = useTrends();
   const { data: zonesData } = useZones();
   const { data: health } = useHealth();
+  const theme = useTheme((s) => s.theme);
+  const toggleTheme = useTheme((s) => s.toggle);
 
   const zones = trends?.zones ?? [];
   const totalObserved = zones.reduce((a, z) => a + z.observed_count, 0);
@@ -22,7 +25,7 @@ export function KpiHeader() {
           <Activity className="h-5 w-5 text-[--color-brand]" />
         </div>
         <div>
-          <div className="text-sm font-semibold leading-tight text-[--color-fg]">ParkIQ</div>
+          <div className="text-sm font-semibold leading-tight text-[--color-fg]">Margadrishti</div>
           <div className="text-[11px] text-[--color-muted]">Command Center · Bengaluru Traffic Police</div>
         </div>
       </div>
@@ -53,6 +56,14 @@ export function KpiHeader() {
             {(health?.model_version as string) ?? "—"}
           </div>
         </div>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={toggleTheme}
+          title={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+        >
+          {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </Button>
       </div>
     </header>
   );
