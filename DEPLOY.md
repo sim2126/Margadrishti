@@ -34,9 +34,20 @@ docker run -p 8000:8000 \
   margadrishti-api
 ```
 
-Deploy that image to a container host (e.g. **Fly.io** — `fly deploy` builds from the local
-context so the local gold is included; or push the image to a registry and run it on Render /
-Railway / a VM). Set the same env vars in the host's dashboard.
+Deploy that image to a container host. **Fly.io is preconfigured** (`backend/fly.toml`, Mumbai
+region) — it builds from the local context so the gitignored gold is included automatically:
+
+```bash
+cd backend
+fly launch --no-deploy        # first time only; pick a unique app name, keep the existing fly.toml
+fly secrets set ANTHROPIC_API_KEY=sk-ant-... \
+  MARGA_COPILOT_LLM_ENABLED=true MARGA_COPILOT_MAX_PER_SESSION=10 \
+  MARGA_COPILOT_MAX_PER_DAY=200 MARGA_CORS_ORIGINS=https://<your-frontend-domain>
+fly deploy
+```
+
+Alternatively push the image to a registry and run it on Render / Railway / a VM, setting the
+same env vars in the host's dashboard.
 
 Health checks: `GET /health` (store mode + versions) and `GET /ready` (503 until serving data is
 queryable) — wire `/ready` as the host's readiness probe.

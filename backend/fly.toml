@@ -1,0 +1,23 @@
+# Fly.io deploy config for the Margadrishti offline API (gold baked into the image).
+# Deploy from THIS directory so the local gitignored gold is in the build context:
+#   cd backend && fly deploy
+# Set secrets first (NEVER put the key in this file — fly.toml is committed):
+#   fly secrets set ANTHROPIC_API_KEY=sk-ant-... \
+#     MARGA_COPILOT_LLM_ENABLED=true MARGA_COPILOT_MAX_PER_SESSION=10 \
+#     MARGA_COPILOT_MAX_PER_DAY=200 MARGA_CORS_ORIGINS=https://<your-frontend-domain>
+app = "margadrishti-api"        # change to your unique Fly app name (fly launch sets this)
+primary_region = "bom"          # Mumbai — closest Fly region to Bengaluru
+
+[build]
+  dockerfile = "Dockerfile.serve"
+
+[env]
+  MARGA_OFFLINE = "true"
+  MARGA_DATA_ROOT = "/app/data"
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1      # keep 1 warm for the demo; set 0 to scale-to-zero for cost
