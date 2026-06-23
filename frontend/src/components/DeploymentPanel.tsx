@@ -17,9 +17,14 @@ export function DeploymentPanel() {
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-y-auto p-4">
-      <div className="flex items-center gap-2">
-        <ShieldCheck className="h-4 w-4 text-[--color-brand]" />
-        <StatLabel>Deployment Plan</StatLabel>
+      <div>
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-[--color-brand]" />
+          <StatLabel>Patrol deployment</StatLabel>
+        </div>
+        <p className="mt-1 text-xs text-[--color-muted]">
+          Generate a patrol plan from current hotspots. Advisory — needs human approval.
+        </p>
       </div>
 
       <div className="grid grid-cols-3 gap-2">

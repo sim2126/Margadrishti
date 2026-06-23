@@ -3,7 +3,7 @@ import { useHealth, useTrends, useZones } from "@/lib/api";
 import { useTheme } from "@/store/theme";
 import { useUi } from "@/store/ui";
 import { BrandMark } from "./BrandLogo";
-import { Button, StatLabel } from "./ui";
+import { Button } from "./ui";
 
 export function KpiHeader() {
   const zone = useUi((s) => s.zone);
@@ -18,6 +18,7 @@ export function KpiHeader() {
   const totalObserved = zones.reduce((a, z) => a + z.observed_count, 0);
   const totalSegments = zones.reduce((a, z) => a + z.n_segments, 0);
   const meanCii = zones.length ? zones.reduce((a, z) => a + z.mean_cii, 0) / zones.length : 0;
+  const ciiVersion = trends?.provenance?.cii_version ?? "—";
 
   return (
     <header className="flex items-center justify-between gap-6 border-b bg-[--color-surface] px-5 py-3">
@@ -36,7 +37,7 @@ export function KpiHeader() {
       <div className="flex flex-1 items-center justify-center gap-2">
         <Kpi label="Observed enforcement" value={totalObserved.toLocaleString()} hint="not prevalence" />
         <Kpi label="Segments tracked" value={totalSegments.toLocaleString()} />
-        <Kpi label="Mean CII" value={meanCii.toFixed(3)} />
+        <Kpi label="Mean CII" value={meanCii.toFixed(3)} hint="prioritisation proxy" />
         <Kpi label="Zones" value={String(zones.length)} />
       </div>
 
@@ -61,12 +62,13 @@ export function KpiHeader() {
             <span className="h-1.5 w-1.5 rounded-full bg-[--color-impact-4]" /> API offline
           </span>
         ) : (
-          <div className="text-right">
-            <StatLabel>Model</StatLabel>
-            <div className="text-[11px] text-[--color-muted]">
-              {(health?.model_version as string) ?? "—"}
-            </div>
-          </div>
+          <span
+            className="flex items-center gap-1.5 rounded-full border bg-[--color-surface-2]/60 px-2.5 py-1 text-[11px] text-[--color-muted]"
+            title={`Healthy · model ${(health?.model_version as string) ?? "—"}`}
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-[--color-impact-1]" />
+            CII {ciiVersion}
+          </span>
         )}
         <Button
           variant="outline"

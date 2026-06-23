@@ -13,9 +13,14 @@ export function HotspotList() {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between border-b px-4 py-3">
-        <StatLabel>Hotspots {zone ? `· ${zone}` : "· all zones"}</StatLabel>
-        <span className="text-[11px] text-[--color-muted]">{top.length} segments</span>
+      <div className="border-b px-4 py-3">
+        <div className="flex items-center justify-between">
+          <StatLabel>Hotspots {zone ? `· ${zone}` : ""}</StatLabel>
+          <span className="text-[11px] text-[--color-muted]">{top.length} · by CII</span>
+        </div>
+        <p className="mt-0.5 text-[11px] text-[--color-muted]">
+          Congestion-Impact Index — a prioritisation proxy
+        </p>
       </div>
       <div className="flex-1 overflow-y-auto">
         {isLoading && <p className="p-4 text-sm text-[--color-muted]">Loading…</p>}

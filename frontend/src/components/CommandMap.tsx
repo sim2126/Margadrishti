@@ -120,6 +120,10 @@ export function CommandMap() {
         <DeckOverlay layers={simActive ? [layer, simLayer] : [layer]} interleaved />
       </MapGL>
 
+      <div className="pointer-events-none absolute right-4 top-4 rounded-full border bg-[--color-surface]/90 px-2.5 py-1 text-[11px] text-[--color-muted] backdrop-blur">
+        H3 r{H3_RES} · 3D impact
+      </div>
+
       {simActive && (
         <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-full border bg-[--color-surface]/90 px-3 py-1 text-xs text-[--color-fg]">
           What-if active · <span className="text-[#38bdf8]">●</span> blocked segment ·{" "}

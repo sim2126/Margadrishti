@@ -1,6 +1,6 @@
 import { FlaskConical, X } from "lucide-react";
 import { useState } from "react";
-import { useSimulateBlockage } from "@/lib/api";
+import { useSegment, useSimulateBlockage } from "@/lib/api";
 import { ciiCss } from "@/lib/utils";
 import { useUi } from "@/store/ui";
 import { Button, StatLabel } from "./ui";
@@ -9,6 +9,7 @@ export function WhatIfPanel() {
   const segment = useUi((s) => s.selectedSegment);
   const sim = useUi((s) => s.sim);
   const setSim = useUi((s) => s.setSim);
+  const { data: seg } = useSegment(segment);
   const [lanes, setLanes] = useState(1);
   const [minutes, setMinutes] = useState(45);
   const run = useSimulateBlockage();
@@ -27,9 +28,16 @@ export function WhatIfPanel() {
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-y-auto p-4">
-      <div className="flex items-center gap-2">
-        <FlaskConical className="h-4 w-4 text-[--color-brand]" />
-        <StatLabel>What-if: curb-lane blockage</StatLabel>
+      <div>
+        <div className="flex items-center gap-2">
+          <FlaskConical className="h-4 w-4 text-[--color-brand]" />
+          <StatLabel>Lane-blockage simulation</StatLabel>
+        </div>
+        {seg && (
+          <p className="mt-1 truncate text-xs text-[--color-muted]">
+            {seg.name ?? "Unnamed road"}{seg.junction ? ` · ${seg.junction}` : ""}
+          </p>
+        )}
       </div>
 
       <div className="space-y-3">
