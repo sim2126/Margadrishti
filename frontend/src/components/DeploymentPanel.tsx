@@ -56,7 +56,7 @@ export function DeploymentPanel() {
         {plan.isPending ? "Optimising…" : "Generate plan"}
       </Button>
 
-      {plan.isError && <p className="text-sm text-(--color-impact-4)">Could not build plan (check zone).</p>}
+      {plan.isError && <p className="text-sm text-impact-4">Could not build plan (check zone).</p>}
 
       {plan.data && (
         <div className="space-y-3">
@@ -83,7 +83,7 @@ export function DeploymentPanel() {
               </ol>
             </div>
           ))}
-          <div className="rounded-(--radius) border border-(--color-impact-2)/40 bg-(--color-impact-2)/10 p-2.5 text-[11px] text-(--color-impact-2)">
+          <div className="rounded-(--radius) border border-impact-2/40 bg-impact-2/10 p-2.5 text-[11px] text-impact-2">
             ⚠ {plan.data.method_caveats}
           </div>
           <div className="rounded-(--radius) border p-2.5 text-[11px] text-(--color-muted)">

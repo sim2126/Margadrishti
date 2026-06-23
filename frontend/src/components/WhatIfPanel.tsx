@@ -54,7 +54,7 @@ export function WhatIfPanel() {
         </Button>
       )}
 
-      {run.isError && <p className="text-sm text-(--color-impact-4)">Could not simulate this segment.</p>}
+      {run.isError && <p className="text-sm text-impact-4">Could not simulate this segment.</p>}
 
       {sim && (
         <div className="space-y-3">
@@ -81,7 +81,7 @@ export function WhatIfPanel() {
             </ol>
           </div>
 
-          <div className="rounded-(--radius) border border-(--color-impact-2)/40 bg-(--color-impact-2)/10 p-2.5 text-[11px] text-(--color-impact-2)">
+          <div className="rounded-(--radius) border border-impact-2/40 bg-impact-2/10 p-2.5 text-[11px] text-impact-2">
             ⚠ {sim.caveats}
           </div>
           <div className="text-[10px] text-(--color-muted)">evidence {sim.evidence_id} · kind: {sim.kind}</div>

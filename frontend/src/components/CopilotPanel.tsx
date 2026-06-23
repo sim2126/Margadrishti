@@ -21,12 +21,12 @@ export function CopilotPanel() {
         <StatLabel>Enforcement Copilot</StatLabel>
       </div>
       <p className="mt-1 text-xs text-(--color-muted)">
-        Answers only from the analytics API — never invents numbers. Plans are advisory.
+        Answers from your data only — never invents numbers. Plans are advisory.
       </p>
 
       <div className="my-3 flex-1 overflow-y-auto rounded-(--radius) border bg-(--color-surface-2)/30 p-3">
         {copilot.isPending && <p className="text-sm text-(--color-muted)">Thinking…</p>}
-        {copilot.isError && <p className="text-sm text-(--color-impact-4)">Copilot unavailable.</p>}
+        {copilot.isError && <p className="text-sm text-impact-4">Copilot unavailable.</p>}
         {copilot.data ? (
           <div className="space-y-2">
             <p className="text-sm leading-relaxed text-(--color-fg)">{copilot.data.answer}</p>

@@ -39,9 +39,7 @@ export function TimeScrubber() {
         onChange={(e) => setHour(Number(e.target.value))}
         className="h-1 flex-1 cursor-pointer appearance-none rounded-full bg-(--color-surface-2) accent-(--color-brand)"
       />
-      <span className="hidden max-w-[42%] shrink truncate text-[11px] text-(--color-muted) lg:inline">
-        Map shows all-day aggregate · time-sliced CII pending API
-      </span>
+      <span className="hidden shrink-0 text-[11px] text-(--color-muted) lg:inline">Time of day</span>
     </div>
   );
 }

@@ -121,7 +121,7 @@ export function CommandMap() {
       </MapGL>
 
       <div className="pointer-events-none absolute right-4 top-4 rounded-full border bg-(--color-surface)/90 px-2.5 py-1 text-[11px] text-(--color-muted) backdrop-blur">
-        H3 r{H3_RES} · 3D impact
+        3D impact
       </div>
 
       {simActive && (
@@ -137,15 +137,13 @@ export function CommandMap() {
         </div>
       )}
       {!isLoading && isError && (
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-w-xs rounded-(--radius) border border-(--color-impact-4)/40 bg-(--color-surface)/95 px-5 py-4 text-center text-sm text-(--color-muted)">
-          Couldn't reach the API. Check that the Margadrishti API is running and{" "}
-          <code className="text-(--color-fg)">VITE_API_URL</code> points to it.
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-w-xs rounded-(--radius) border border-impact-4/40 bg-(--color-surface)/95 px-5 py-4 text-center text-sm text-(--color-muted)">
+          Unable to load data right now. Please try again shortly.
         </div>
       )}
       {!isLoading && !isError && hexes.length === 0 && (
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-(--radius) border bg-(--color-surface)/95 px-5 py-4 text-center text-sm text-(--color-muted)">
-          No CII data for this filter. Run the pipeline (<code className="text-(--color-fg)">make worker</code>)
-          or clear the zone filter.
+          No hotspots for this filter.
         </div>
       )}
       {hover && (

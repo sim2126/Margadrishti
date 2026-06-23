@@ -9,6 +9,18 @@ const WHY_LABELS: Record<string, string> = {
   obstruction: "Obstruction footprint",
 };
 
+function fmtAsOf(s: string): string {
+  const d = new Date(s);
+  return isNaN(d.getTime())
+    ? s
+    : d.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function prettyModel(v: string): string {
+  const base = v.split(/-\d{4}-/)[0].replace(/_/g, " ");
+  return base.charAt(0).toUpperCase() + base.slice(1);
+}
+
 function WhyBar({ label, value }: { label: string; value: number }) {
   const pct = Math.round(value * 100);
   return (
@@ -30,7 +42,7 @@ function KindChip({ kind }: { kind: "observed" | "predicted" | "simulated" }) {
       ? "text-(--color-brand) border-(--color-brand)/40 bg-(--color-brand)/10"
       : kind === "predicted"
         ? "text-[#6aa9ff] border-[#6aa9ff]/40 bg-[#6aa9ff]/10"
-        : "text-(--color-impact-2) border-(--color-impact-2)/40 bg-(--color-impact-2)/10";
+        : "text-impact-2 border-impact-2/40 bg-impact-2/10";
   return <span className={cn("rounded-full border px-1.5 py-0.5 text-[10px] capitalize", tone)}>{kind}</span>;
 }
 
@@ -84,8 +96,8 @@ export function SegmentDetail() {
             <KindChip kind="simulated" />
           </div>
           {!ctx.uncertainty.learned_model_shipped && (
-            <p className="mb-1.5 text-[11px] text-(--color-impact-2)">
-              ⚠ Learned model did not beat baselines on both gates → recency baseline in use.
+            <p className="mb-1.5 text-[11px] text-(--color-muted)">
+              Risk uses a recency model — the learned model has not yet outperformed it.
             </p>
           )}
           <ul className="space-y-1 text-[11px] text-(--color-muted)">
@@ -119,15 +131,9 @@ function Provenance({ d }: { d: import("@/lib/types").Provenance }) {
   return (
     <div className="mt-auto rounded-(--radius) border border-(--color-border)/60 bg-(--color-surface-2)/30 p-3 text-[11px] text-(--color-muted)">
       <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-        <span>As-of <span className="text-(--color-fg)">{d.as_of}</span></span>
-        <span>Model <span className="text-(--color-fg)">{d.model_version}</span></span>
+        <span>As of <span className="text-(--color-fg)">{fmtAsOf(d.as_of)}</span></span>
+        <span>Model <span className="text-(--color-fg)">{prettyModel(d.model_version)}</span></span>
       </div>
-      <div className="mt-0.5">Dataset {d.dataset_version} · features {d.feature_version}</div>
-      {d.cii_risk_is_interim_biased && (
-        <div className="mt-1 text-(--color-impact-3)">
-          ⚠ CII risk term is interim (raw density) — bias-adjusted after model run.
-        </div>
-      )}
       {d.note && <div className="mt-1 italic">{d.note}</div>}
     </div>
   );

@@ -18,7 +18,6 @@ export function KpiHeader() {
   const totalObserved = zones.reduce((a, z) => a + z.observed_count, 0);
   const totalSegments = zones.reduce((a, z) => a + z.n_segments, 0);
   const meanCii = zones.length ? zones.reduce((a, z) => a + z.mean_cii, 0) / zones.length : 0;
-  const ciiVersion = trends?.provenance?.cii_version ?? "—";
 
   return (
     <header className="flex items-center justify-between gap-6 border-b bg-(--color-surface) px-5 py-3">
@@ -54,22 +53,13 @@ export function KpiHeader() {
             </option>
           ))}
         </select>
-        {apiDown ? (
-          <span
-            className="flex items-center gap-1.5 rounded-full border border-(--color-impact-4)/40 bg-(--color-impact-4)/10 px-2.5 py-1 text-[11px] text-(--color-impact-4)"
-            title="Cannot reach the Margadrishti API (VITE_API_URL)"
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-(--color-impact-4)" /> API offline
-          </span>
-        ) : (
-          <span
-            className="flex items-center gap-1.5 rounded-full border bg-(--color-surface-2)/60 px-2.5 py-1 text-[11px] text-(--color-muted)"
-            title={`Healthy · model ${(health?.model_version as string) ?? "—"}`}
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-(--color-impact-1)" />
-            CII {ciiVersion}
-          </span>
-        )}
+        <span
+          className="flex items-center gap-1.5 rounded-full border bg-(--color-surface-2)/60 px-2.5 py-1 text-[11px] text-(--color-muted)"
+          title={apiDown ? "Cannot reach the service" : `Live · model ${(health?.model_version as string) ?? "—"}`}
+        >
+          <span className={`h-1.5 w-1.5 rounded-full ${apiDown ? "bg-impact-4" : "bg-impact-1"}`} />
+          {apiDown ? "Offline" : "Live"}
+        </span>
         <Button
           variant="outline"
           size="icon"
