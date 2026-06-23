@@ -1,5 +1,6 @@
 # --- Project governance (kept local, not published) ---
 CLAUDE.md
+docs/claude-design-briefs.md
 
 # --- Raw datasets (sensitive govt data; too large for git) ---
 *.csv
