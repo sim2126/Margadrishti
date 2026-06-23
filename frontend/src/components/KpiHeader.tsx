@@ -10,7 +10,7 @@ export function KpiHeader() {
   const setZone = useUi((s) => s.setZone);
   const { data: trends } = useTrends();
   const { data: zonesData } = useZones();
-  const { data: health } = useHealth();
+  const { data: health, isError: apiDown } = useHealth();
   const theme = useTheme((s) => s.theme);
   const toggleTheme = useTheme((s) => s.toggle);
 
@@ -53,12 +53,21 @@ export function KpiHeader() {
             </option>
           ))}
         </select>
-        <div className="text-right">
-          <StatLabel>Model</StatLabel>
-          <div className="text-[11px] text-[--color-muted]">
-            {(health?.model_version as string) ?? "—"}
+        {apiDown ? (
+          <span
+            className="flex items-center gap-1.5 rounded-full border border-[--color-impact-4]/40 bg-[--color-impact-4]/10 px-2.5 py-1 text-[11px] text-[--color-impact-4]"
+            title="Cannot reach the Margadrishti API (VITE_API_URL)"
+          >
+            <span className="h-1.5 w-1.5 rounded-full bg-[--color-impact-4]" /> API offline
+          </span>
+        ) : (
+          <div className="text-right">
+            <StatLabel>Model</StatLabel>
+            <div className="text-[11px] text-[--color-muted]">
+              {(health?.model_version as string) ?? "—"}
+            </div>
           </div>
-        </div>
+        )}
         <Button
           variant="outline"
           size="icon"

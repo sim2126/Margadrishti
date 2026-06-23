@@ -13,6 +13,7 @@ from margadrishti.models.baselines import (
 from margadrishti.models.base import to_segment_risk
 from margadrishti.models.evaluate import beats_baselines, rolling_origin_evaluate
 from margadrishti.models.lightgbm_model import LightGBMForecaster
+from margadrishti.models.self_exciting import SelfExcitingForecaster, _neighbours
 
 
 def test_panel_is_dense_and_leakage_safe(synthetic):
@@ -75,3 +76,37 @@ def test_beats_baselines_logic():
     worse = EvalReport("m", {25: 0.1}, {25: 0.05}, 0.05)
     assert beats_baselines(better, base, k=25) is True
     assert beats_baselines(worse, base, k=25) is False
+
+
+def test_self_exciting_neighbours_from_physical_ids():
+    # chain 1-2-3: 1_2_0 and 2_3_0 share node 2; 9_10_0 is disconnected
+    nbrs = _neighbours(["1_2_0", "2_3_0", "3_4_0", "9_10_0"])
+    assert "2_3_0" in nbrs["1_2_0"]
+    assert "1_2_0" not in nbrs["1_2_0"]      # not its own neighbour
+    assert nbrs["9_10_0"] == set()           # isolated
+
+
+def test_self_exciting_fits_and_predicts(synthetic):
+    matched, viol, segs = synthetic
+    panel = build_daily_panel(matched, viol, segs)
+    model = SelfExcitingForecaster().fit(panel)
+    risk = model.predict_risk(panel)
+    assert len(risk) == len(panel)
+    assert np.all(np.isfinite(risk))
+
+
+def test_self_exciting_neighbour_term_raises_score():
+    # Two adjacent segments, only the neighbour has history → seed gets a spillover lift.
+    import pandas as pd
+
+    panel = pd.DataFrame(
+        {
+            "physical_id": ["1_2_0", "1_2_0", "2_3_0", "2_3_0"],
+            "day_index": [0, 1, 0, 1],
+            "y_count": [0, 0, 5, 5],  # history only on neighbour 2_3_0
+        }
+    )
+    with_alpha = SelfExcitingForecaster(alpha=0.8).fit(panel)
+    no_alpha = SelfExcitingForecaster(alpha=0.0).fit(panel)
+    # seed 1_2_0 has zero own history; contagion from 2_3_0 lifts it only when alpha>0
+    assert with_alpha._score["1_2_0"] > no_alpha._score["1_2_0"]

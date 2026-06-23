@@ -53,7 +53,7 @@ export function CommandMap() {
   const select = useUi((s) => s.select);
   const sim = useUi((s) => s.sim);
   const theme = useTheme((s) => s.theme);
-  const { data, isLoading } = useCii(zone);
+  const { data, isLoading, isError } = useCii(zone);
   const [hover, setHover] = useState<{ x: number; y: number; hex: Hex } | null>(null);
 
   const hexes = useMemo(() => aggregateToHex(data?.segments ?? []), [data]);
@@ -132,10 +132,16 @@ export function CommandMap() {
           Loading CII surface…
         </div>
       )}
-      {!isLoading && hexes.length === 0 && (
+      {!isLoading && isError && (
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-w-xs rounded-[--radius] border border-[--color-impact-4]/40 bg-[--color-surface]/95 px-5 py-4 text-center text-sm text-[--color-muted]">
+          Couldn't reach the API. Check that the Margadrishti API is running and{" "}
+          <code className="text-[--color-fg]">VITE_API_URL</code> points to it.
+        </div>
+      )}
+      {!isLoading && !isError && hexes.length === 0 && (
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[--radius] border bg-[--color-surface]/95 px-5 py-4 text-center text-sm text-[--color-muted]">
-          No CII data. Point <code className="text-[--color-fg]">VITE_API_URL</code> at the running
-          Margadrishti API and ensure the pipeline has published.
+          No CII data for this filter. Run the pipeline (<code className="text-[--color-fg]">make worker</code>)
+          or clear the zone filter.
         </div>
       )}
       {hover && (

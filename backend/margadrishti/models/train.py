@@ -31,8 +31,11 @@ from margadrishti.models.evaluate import (
     rolling_origin_evaluate,
 )
 from margadrishti.models.lightgbm_model import LightGBMForecaster
+from margadrishti.models.self_exciting import SelfExcitingForecaster
 
 BASELINE_FACTORIES = [HistoricalFrequency, DayOfWeekFrequency, RecencyWeightedFrequency]
+# Candidates that must EARN their place by beating every baseline on both gates.
+CANDIDATE_FACTORIES = [SelfExcitingForecaster, LightGBMForecaster]
 
 
 def _report_dict(r: EvalReport) -> dict:
@@ -55,26 +58,36 @@ def train(storage: Storage | None = None) -> dict:
 
     print(f">> evaluating ladder on {len(panel)} panel rows "
           f"({panel['physical_id'].nunique()} segments, {panel['date'].nunique()} days)")
-    # BOTH gates, for the WHOLE ladder — LightGBM only ships if it beats every baseline
-    # on rolling-origin AND held-out-zone.
+    # BOTH gates for the WHOLE ladder. A candidate (self-exciting, LightGBM) ships only if
+    # it beats EVERY operational baseline on rolling-origin AND held-out-zone.
     base_roll = [rolling_origin_evaluate(f, panel) for f in BASELINE_FACTORIES]
     base_zone = [held_out_zone_evaluate(f, panel) for f in BASELINE_FACTORIES]
-    lgbm_roll = rolling_origin_evaluate(LightGBMForecaster, panel)
-    lgbm_zone = held_out_zone_evaluate(LightGBMForecaster, panel)
-    wins_roll = beats_baselines(lgbm_roll, base_roll)
-    wins_zone = beats_baselines(lgbm_zone, base_zone)
-    ships = wins_roll and wins_zone
 
-    for r in [*base_roll, lgbm_roll]:
+    candidates = []  # (factory, roll_report, zone_report, ships)
+    for f in CANDIDATE_FACTORIES:
+        roll = rolling_origin_evaluate(f, panel)
+        zone = held_out_zone_evaluate(f, panel)
+        ships = beats_baselines(roll, base_roll) and beats_baselines(zone, base_zone)
+        candidates.append((f, roll, zone, ships))
+
+    for r in [*base_roll, *(c[1] for c in candidates)]:
         print(f"   [rolling] {r.model_name:24} PR-AUC={r.pr_auc:.3f}  P@25={r.precision_at_k.get(25, float('nan')):.3f}")
-    for r in [*base_zone, lgbm_zone]:
+    for r in [*base_zone, *(c[2] for c in candidates)]:
         print(f"   [zone]    {r.model_name:24} PR-AUC={r.pr_auc:.3f}  P@25={r.precision_at_k.get(25, float('nan')):.3f}")
-    print(f">> LightGBM ships? rolling={wins_roll} zone={wins_zone} -> {ships}")
 
-    # Winner provides bias-adjusted risk; if LightGBM fails either gate, fall back to the
-    # best baseline (working-over-fancy) and flag it.
-    winner = LightGBMForecaster if ships else RecencyWeightedFrequency
-    model = winner().fit(panel)
+    # Winner = the shipping candidate with the best rolling-origin PR-AUC; else the best
+    # baseline by rolling-origin PR-AUC (working-over-fancy, honest fallback).
+    shipped = [c for c in candidates if c[3]]
+    if shipped:
+        winner_factory = max(shipped, key=lambda c: c[1].pr_auc)[0]
+        a_candidate_shipped = True
+    else:
+        best_base = max(zip(BASELINE_FACTORIES, base_roll), key=lambda t: t[1].pr_auc)[0]
+        winner_factory = best_base
+        a_candidate_shipped = False
+    print(f">> a learned/frontier candidate shipped: {a_candidate_shipped}")
+
+    model = winner_factory().fit(panel)
     risk_rows = model.predict_risk(panel)
     horizon = panel["date"].max()
     seg_risk = to_segment_risk(panel, risk_rows, horizon)
@@ -93,20 +106,22 @@ def train(storage: Storage | None = None) -> dict:
     report = {
         "model_version": model_version,
         "winner": model.name,
-        "lightgbm_ships": ships,
-        "lightgbm_beats_baselines_rolling": wins_roll,
-        "lightgbm_beats_baselines_held_out_zone": wins_zone,
-        "rolling_origin": [_report_dict(r) for r in [*base_roll, lgbm_roll]],
-        "held_out_zone": [_report_dict(r) for r in [*base_zone, lgbm_zone]],
+        "a_candidate_shipped": a_candidate_shipped,
+        "candidates": {
+            c[1].model_name: {"ships": c[3], "rolling": _report_dict(c[1]), "held_out_zone": _report_dict(c[2])}
+            for c in candidates
+        },
+        "rolling_origin": [_report_dict(r) for r in [*base_roll, *(c[1] for c in candidates)]],
+        "held_out_zone": [_report_dict(r) for r in [*base_zone, *(c[2] for c in candidates)]],
         "feature_importance": model.feature_importance() if hasattr(model, "feature_importance") else {},
     }
     (s.gold / "eval_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
-    _update_manifest(s, model_version, as_of, model.name, ships, wins_roll, wins_zone)
+    _update_manifest(s, model_version, as_of, model.name, a_candidate_shipped)
     print(f"OK predictions + CII written. winner={model.name} version={model_version}")
     return report
 
 
-def _update_manifest(s, model_version, horizon, winner, ships, wins_roll, wins_zone) -> None:
+def _update_manifest(s, model_version, horizon, winner, a_candidate_shipped) -> None:
     path = s.gold / "manifest.json"
     manifest = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
     manifest["model"] = {
@@ -114,9 +129,9 @@ def _update_manifest(s, model_version, horizon, winner, ships, wins_roll, wins_z
         "winner": winner,
         "as_of": horizon,
         "trained_at": now_rfc3339(),
-        "lightgbm_ships": ships,
-        "beats_baselines_rolling": wins_roll,
-        "beats_baselines_held_out_zone": wins_zone,
+        # True if a learned/frontier candidate beat all baselines on both gates and shipped;
+        # False means the honest baseline fallback is in use.
+        "lightgbm_ships": a_candidate_shipped,
     }
     path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
 

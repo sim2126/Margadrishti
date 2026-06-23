@@ -1,5 +1,6 @@
 import { FlaskConical, Map as MapIcon, Sparkles, ShieldCheck } from "lucide-react";
 import { CommandMap } from "@/components/CommandMap";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CopilotPanel } from "@/components/CopilotPanel";
 import { DeploymentPanel } from "@/components/DeploymentPanel";
 import { HotspotList } from "@/components/HotspotList";
@@ -32,7 +33,9 @@ export function CommandCenter() {
 
         {/* Center — the operational picture */}
         <main className="min-h-0 overflow-hidden">
-          <CommandMap />
+          <ErrorBoundary label="Map failed to render">
+            <CommandMap />
+          </ErrorBoundary>
         </main>
 
         {/* Right rail — contextual workspace (scrolls internally, never the page) */}

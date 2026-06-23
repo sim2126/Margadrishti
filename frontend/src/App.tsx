@@ -1,5 +1,10 @@
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { CommandCenter } from "@/screens/CommandCenter";
 
 export default function App() {
-  return <CommandCenter />;
+  return (
+    <ErrorBoundary label="The command center hit an error">
+      <CommandCenter />
+    </ErrorBoundary>
+  );
 }
