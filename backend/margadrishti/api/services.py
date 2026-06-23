@@ -82,11 +82,19 @@ def _clean(v, default=0):
     return v.item() if hasattr(v, "item") else v
 
 
+def _text(v):
+    """Coerce a possibly-NaN cell to str | None. Full-city OSM data carries missing road
+    names/zones as float NaN (not None), which crashes .strip() and pydantic str fields."""
+    if v is None or (isinstance(v, float) and math.isnan(v)):
+        return None
+    return str(v)
+
+
 def _label(name, junction, zone, physical_id: str) -> str:
     """Operationally distinguishable label so several segments on one road don't all
     read as just 'Hosur Road'. Stable short code disambiguates same name + place."""
-    base = (name or "Unnamed road").strip()
-    place = (junction or zone or "").strip()
+    base = (_text(name) or "Unnamed road").strip()
+    place = (_text(junction) or _text(zone) or "").strip()
     code = hashlib.sha1(physical_id.encode()).hexdigest()[:4].upper()
     return f"{base} · {place} · {code}" if place else f"{base} · {code}"
 
@@ -114,9 +122,9 @@ class MargadrishtiService:
     def _cii_segment(r) -> CiiSegment:
         """Build a CiiSegment from a cii⋈dim row (shared by the map and area endpoints)."""
         return CiiSegment(
-            physical_id=r.physical_id, name=r.name,
+            physical_id=r.physical_id, name=_text(r.name),
             label=_label(r.name, r.junction, r.zone, r.physical_id),
-            junction=r.junction, highway=r.highway, zone=r.zone,
+            junction=_text(r.junction), highway=_text(r.highway), zone=_text(r.zone),
             cii=round(float(r.cii), 4), observed_count=int(r.observed_count),
             approval_rate=_clean(r.approval_rate, None),
             centroid_lat=float(r.centroid_lat), centroid_lon=float(r.centroid_lon),
@@ -141,9 +149,9 @@ class MargadrishtiService:
         interim = bool(df["cii_risk_is_interim_biased"].iloc[0]) if len(df) else False
         segs = [
             AreaSegment(
-                physical_id=r.physical_id, name=r.name,
+                physical_id=r.physical_id, name=_text(r.name),
                 label=_label(r.name, r.junction, r.zone, r.physical_id),
-                junction=r.junction, zone=r.zone,
+                junction=_text(r.junction), zone=_text(r.zone),
                 cii=round(float(_clean(r.cii)), 4),
                 observed_count=int(_clean(r.observed_count)),
                 predicted_risk=_clean(r.predicted_risk, None),
@@ -178,9 +186,9 @@ class MargadrishtiService:
         interim = bool(df["cii_risk_is_interim_biased"].iloc[0]) if len(df) else False
         segs = [
             AreaSegment(
-                physical_id=r.physical_id, name=r.name,
+                physical_id=r.physical_id, name=_text(r.name),
                 label=_label(r.name, r.junction, r.zone, r.physical_id),
-                junction=r.junction, zone=r.zone,
+                junction=_text(r.junction), zone=_text(r.zone),
                 cii=round(float(_clean(r.cii)), 4),
                 observed_count=int(_clean(r.observed_count)),
                 predicted_risk=_clean(r.predicted_risk, None),
@@ -210,9 +218,9 @@ class MargadrishtiService:
         max_w = float(df["window_count"].max()) if len(df) else 0.0
         segs = [
             TimeSlicedSegment(
-                physical_id=r.physical_id, name=r.name,
+                physical_id=r.physical_id, name=_text(r.name),
                 label=_label(r.name, r.junction, r.zone, r.physical_id),
-                junction=r.junction, zone=r.zone,
+                junction=_text(r.junction), zone=_text(r.zone),
                 cii=round(float(_clean(r.cii)), 4),
                 window_observed_count=int(_clean(r.window_count)),
                 hour_intensity=round(float(_clean(r.window_count)) / max_w, 4) if max_w > 0 else 0.0,
@@ -235,9 +243,9 @@ class MargadrishtiService:
             "obstruction": round(float(_clean(d.get("cii_component__obstruction"))), 4),
         }
         return SegmentDetail(
-            physical_id=physical_id, name=d.get("name"),
+            physical_id=physical_id, name=_text(d.get("name")),
             label=_label(d.get("name"), d.get("junction"), d.get("zone"), physical_id),
-            junction=d.get("junction"), zone=d.get("zone"),
+            junction=_text(d.get("junction")), zone=_text(d.get("zone")),
             cii=round(float(_clean(d.get("cii"))), 4),
             predicted_risk=_clean(d.get("predicted_risk"), None),
             observed_count=int(_clean(d.get("observed_count"))),
@@ -253,9 +261,9 @@ class MargadrishtiService:
         df = self.repo.forecast(limit=limit, zone=zone)
         items = [
             ForecastItem(
-                physical_id=r.physical_id, name=r.name,
+                physical_id=r.physical_id, name=_text(r.name),
                 label=_label(r.name, r.junction, r.zone, r.physical_id),
-                junction=r.junction, zone=r.zone,
+                junction=_text(r.junction), zone=_text(r.zone),
                 risk=round(float(_clean(r.risk)), 4), cii=_clean(r.cii, None),
                 centroid_lat=float(r.centroid_lat), centroid_lon=float(r.centroid_lon),
             )
@@ -267,7 +275,7 @@ class MargadrishtiService:
         df = self.repo.zone_trends()
         zones = [
             ZoneTrend(
-                zone=r.zone, n_segments=int(r.n_segments),
+                zone=_text(r.zone), n_segments=int(r.n_segments),
                 observed_count=int(_clean(r.observed_count)),
                 mean_cii=round(float(_clean(r.mean_cii)), 4),
             )

@@ -5,7 +5,7 @@
 #   fly secrets set ANTHROPIC_API_KEY=sk-ant-... \
 #     MARGA_COPILOT_LLM_ENABLED=true MARGA_COPILOT_MAX_PER_SESSION=10 \
 #     MARGA_COPILOT_MAX_PER_DAY=200 MARGA_CORS_ORIGINS=https://<your-frontend-domain>
-app = "margadrishti-api"        # change to your unique Fly app name (fly launch sets this)
+app = "margadrishti-btp"        # Fly app name
 primary_region = "bom"          # Mumbai — closest Fly region to Bengaluru
 
 [build]
@@ -21,3 +21,8 @@ primary_region = "bom"          # Mumbai — closest Fly region to Bengaluru
   auto_stop_machines = "stop"
   auto_start_machines = true
   min_machines_running = 1      # keep 1 warm for the demo; set 0 to scale-to-zero for cost
+
+[[vm]]
+  memory = "1gb"                # full-city DuckDB queries OOM on the 256MB default
+  cpu_kind = "shared"
+  cpus = 1

@@ -230,6 +230,18 @@ def test_area_deployment_plan_keeps_area_separate_from_zone(client):
             assert isinstance(stop["centroid_lon"], float)
 
 
+def test_cii_full_limit_handles_missing_names(client):
+    """Full-city OSM data has segments with NaN/missing names; label-building and
+    serialisation must not crash on a large pull (regression: float .strip() / pydantic)."""
+    r = client.get("/segments/cii?limit=20000")
+    assert r.status_code == 200
+    segs = r.json()["segments"]
+    assert len(segs) > 100
+    assert all(s["label"] for s in segs)              # every segment still has a usable label
+    assert client.get("/analytics/trends").status_code == 200
+    assert client.get("/zones").status_code == 200
+
+
 def test_deployment_unknown_zone_is_422(client):
     r = client.post("/deployment/plan", json={"zone": "Nowhere-XYZ", "n_units": 2})
     assert r.status_code == 422
