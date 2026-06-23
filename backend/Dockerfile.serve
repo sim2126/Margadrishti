@@ -1,0 +1,21 @@
+# Standalone serving image: FastAPI reading the bundled gold tier — no PostGIS/Redis/ETL.
+# Build LOCALLY where data/gold exists (it is gitignored, so a bare git checkout has no gold),
+# then `fly deploy` or push to a registry and run on any container host.
+# Provide ANTHROPIC_API_KEY + copilot caps + MARGA_CORS_ORIGINS as RUNTIME env vars on the
+# host — never bake the key into the image.
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY pyproject.toml ./
+COPY margadrishti ./margadrishti
+RUN pip install --no-cache-dir .
+
+# Bake the reproducible gold artifacts (parquet + manifest.json) into the image.
+COPY data/gold ./data/gold
+
+ENV PYTHONUNBUFFERED=1 MARGA_DATA_ROOT=/app/data MARGA_OFFLINE=true
+EXPOSE 8000
+CMD ["uvicorn", "margadrishti.api.app:app", "--host", "0.0.0.0", "--port", "8000"]

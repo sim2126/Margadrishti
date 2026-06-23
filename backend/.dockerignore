@@ -1,0 +1,15 @@
+# Keep the image lean and free of secrets/PII/raw data.
+# NOTE: data/gold IS intentionally included (Dockerfile.serve bakes it in for offline serving).
+__pycache__/
+*.pyc
+.pytest_cache/
+build/
+.env
+.env.local
+# Raw/intermediate/PII tiers must never enter an image:
+data/_restricted/
+data/bronze/
+data/silver/
+data/cache/
+data/jobs/
+data/gold_bbox_backup_*/
