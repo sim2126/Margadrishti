@@ -25,6 +25,11 @@ class Settings(BaseSettings):
     # The copilot endpoint is currently unauthenticated. Default OFF so it cannot spend
     # the API key from the open internet; enable only behind auth + rate limiting.
     copilot_llm_enabled: bool = Field(default=False, alias="MARGA_COPILOT_LLM_ENABLED")
+    # Spend guards for the live copilot (only consulted when the LLM path is enabled).
+    # Per-session = UX cap shown to one visitor; per-day = the hard global money ceiling
+    # across everyone. On exceed, the copilot degrades to the deterministic fallback.
+    copilot_max_per_session: int = Field(default=10, alias="MARGA_COPILOT_MAX_PER_SESSION")
+    copilot_max_per_day: int = Field(default=200, alias="MARGA_COPILOT_MAX_PER_DAY")
 
     # Serving store + queue/broker. The writer (worker/publish) uses POSTGIS_DSN (owner,
     # bypasses RLS to load tables). The API/reader should use POSTGIS_READ_DSN — a
@@ -32,7 +37,15 @@ class Settings(BaseSettings):
     # to POSTGIS_DSN if unset (RLS then bypassed; flagged as a hardening gap).
     postgis_dsn: str = Field(default="", alias="POSTGIS_DSN")
     postgis_read_dsn: str = Field(default="", alias="POSTGIS_READ_DSN")
+    api_db_password: str = Field(default="", alias="MARGA_API_PASSWORD")
     redis_url: str = Field(default="redis://localhost:6379/0", alias="REDIS_URL")
+    # Comma-separated browser origins allowed to call the API. Use explicit origins in
+    # production (e.g. the Cloudflare Pages URL). "*" is permitted only when set
+    # intentionally for local/demo environments.
+    cors_origins: str = Field(
+        default="http://localhost:5173,http://127.0.0.1:5173",
+        alias="MARGA_CORS_ORIGINS",
+    )
 
     # Storage roots
     data_root: Path = Field(default=Path("./data"), alias="MARGA_DATA_ROOT")
@@ -83,6 +96,10 @@ class Settings(BaseSettings):
     @property
     def gold(self) -> Path:
         return self.data_root / "gold"
+
+    @property
+    def cors_allow_origins(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
 
 @lru_cache

@@ -55,6 +55,23 @@ class PostgisRepository:
             {"zone": zone, "limit": limit},
         )
 
+    def cii_with_risk(self, limit: int = 2000, zone: str | None = None) -> pd.DataFrame:
+        """CII ⋈ geometry ⋈ predicted risk — area selection needs risk + priority utility."""
+        where = "WHERE d.zone = :zone" if zone else ""
+        return self._q(
+            f"""
+            SELECT c.physical_id, c.name, c.highway, c.cii, c.cii_risk_is_interim_biased,
+                   c.observed_count, c.approval_rate,
+                   d.centroid_lat, d.centroid_lon, d.zone, d.junction,
+                   p.risk AS predicted_risk
+            FROM cii c JOIN segments_dim d USING (physical_id)
+            LEFT JOIN predictions p USING (physical_id)
+            {where}
+            ORDER BY c.cii DESC LIMIT :limit
+            """,
+            {"zone": zone, "limit": limit},
+        )
+
     def segment_detail(self, physical_id: str) -> dict | None:
         df = self._q(
             """
@@ -75,6 +92,48 @@ class PostgisRepository:
             "SELECT hour_of_week, count FROM segment_hour_of_week "
             "WHERE physical_id = :pid ORDER BY hour_of_week",
             {"pid": physical_id},
+        )
+
+    def hourly_observed(
+        self,
+        hour: int | None = None,
+        day_of_week: int | None = None,
+        zone: str | None = None,
+        limit: int = 2000,
+    ) -> pd.DataFrame:
+        """Observed-enforcement counts in an IST time window (see GoldRepository.hourly_observed)."""
+        params: dict = {"limit": limit}
+        preds: list[str] = []
+        if day_of_week is not None and hour is not None:
+            preds.append("hour_of_week = :how_eq")
+            params["how_eq"] = day_of_week * 24 + hour
+        elif hour is not None:
+            preds.append("(hour_of_week % 24) = :hod")
+            params["hod"] = hour
+        elif day_of_week is not None:
+            preds.append("hour_of_week >= :dlo AND hour_of_week < :dhi")
+            params["dlo"] = day_of_week * 24
+            params["dhi"] = day_of_week * 24 + 24
+        win_where = ("WHERE " + " AND ".join(preds)) if preds else ""
+        zone_where = "WHERE d.zone = :zone" if zone else ""
+        if zone:
+            params["zone"] = zone
+        return self._q(
+            f"""
+            WITH win AS (
+                SELECT physical_id, SUM(count) AS window_count
+                FROM segment_hour_of_week {win_where} GROUP BY physical_id
+            )
+            SELECT c.physical_id, c.name, c.highway, c.cii, c.cii_risk_is_interim_biased,
+                   c.observed_count, c.approval_rate,
+                   d.centroid_lat, d.centroid_lon, d.zone, d.junction,
+                   COALESCE(w.window_count, 0) AS window_count
+            FROM cii c JOIN segments_dim d USING (physical_id)
+            LEFT JOIN win w USING (physical_id)
+            {zone_where}
+            ORDER BY window_count DESC, c.cii DESC LIMIT :limit
+            """,
+            params,
         )
 
     def forecast(self, limit: int = 50, zone: str | None = None) -> pd.DataFrame:

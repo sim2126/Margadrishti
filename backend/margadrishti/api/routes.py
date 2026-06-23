@@ -11,11 +11,16 @@ from margadrishti.api.deps import get_service
 from margadrishti.context.compiler import TrafficContext
 from margadrishti.simulate.flow import SimulationResult
 from margadrishti.api.models import (
+    AreaDeploymentPlanRequest,
+    AreaDeploymentPlanResponse,
+    AreaSelectionRequest,
+    AreaSummaryResponse,
     CiiMapResponse,
     DeploymentPlanRequest,
     DeploymentPlanResponse,
     ForecastResponse,
     SegmentDetail,
+    TimeSlicedCiiResponse,
     TrendsResponse,
 )
 from margadrishti.api.services import MargadrishtiService, UnknownZoneError
@@ -37,6 +42,18 @@ def segments_cii(
     svc: MargadrishtiService = Depends(get_service),
 ) -> CiiMapResponse:
     return svc.cii_map(limit=limit, zone=zone)
+
+
+@router.get("/segments/cii/hourly", response_model=TimeSlicedCiiResponse, tags=["map"])
+def segments_cii_hourly(
+    hour: int | None = Query(None, ge=0, le=23, description="IST hour-of-day 0–23"),
+    day_of_week: int | None = Query(None, ge=0, le=6, description="Monday=0 … Sunday=6"),
+    zone: str | None = None,
+    limit: int = Query(2000, ge=1, le=20000),
+    svc: MargadrishtiService = Depends(get_service),
+) -> TimeSlicedCiiResponse:
+    """Time-sliced observed-enforcement intensity (not prevalence, not per-hour CII)."""
+    return svc.cii_map_hourly(hour=hour, day_of_week=day_of_week, zone=zone, limit=limit)
 
 
 @router.get("/forecast", response_model=ForecastResponse, tags=["forecast"])
@@ -70,6 +87,22 @@ def deployment_plan(
             status_code=422,
             detail={"error": f"unknown zone {e.zone!r}", "valid_zones": e.valid},
         ) from e
+
+
+@router.post("/area/summary", response_model=AreaSummaryResponse, tags=["map"])
+def area_summary(
+    req: AreaSelectionRequest, svc: MargadrishtiService = Depends(get_service)
+) -> AreaSummaryResponse:
+    """Geofence/lasso area select → in-area segment summary (centroid-in-polygon)."""
+    return svc.area_summary(req)
+
+
+@router.post("/area/deployment/plan", response_model=AreaDeploymentPlanResponse, tags=["deployment"])
+def area_deployment_plan(
+    req: AreaDeploymentPlanRequest, svc: MargadrishtiService = Depends(get_service)
+) -> AreaDeploymentPlanResponse:
+    """Geofence/lasso area select -> advisory patrol plan."""
+    return svc.area_deployment_plan(req)
 
 
 @router.get("/segments/{physical_id}/neighborhood", tags=["graph"])

@@ -12,6 +12,13 @@ import pytest
 os.environ.setdefault("MARGA_PII_SALT", "test-salt")
 os.environ.setdefault("MARGA_DATA_ROOT", "./data")
 
+# Hermetic copilot: a real ANTHROPIC_API_KEY may live in backend/.env, which Settings reads.
+# Force the live path OFF for the suite so tests never spend the key or hit the network.
+# The gated live test opts back in explicitly with MARGA_LIVE=1.
+if os.environ.get("MARGA_LIVE") != "1":
+    os.environ["ANTHROPIC_API_KEY"] = ""
+    os.environ["MARGA_COPILOT_LLM_ENABLED"] = "false"
+
 from margadrishti.core.config import get_settings  # noqa: E402
 
 

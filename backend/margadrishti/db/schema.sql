@@ -90,7 +90,7 @@ CREATE POLICY zone_scope ON segments_dim
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'margadrishti_api') THEN
-        CREATE ROLE margadrishti_api LOGIN PASSWORD 'margadrishti_api';
+        CREATE ROLE margadrishti_api LOGIN;
     END IF;
 END $$;
 GRANT SELECT ON segments_dim, cii, predictions, segment_features, segment_hour_of_week, tiles_cii

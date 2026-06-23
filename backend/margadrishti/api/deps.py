@@ -14,7 +14,12 @@ from margadrishti.core.config import get_settings
 
 def get_repository():
     s = get_settings()
-    if not s.offline and s.postgis_dsn:
+    if not s.offline:
+        if not s.postgis_read_dsn:
+            raise RuntimeError(
+                "MARGA_OFFLINE=false requires POSTGIS_READ_DSN for API serving. "
+                "Refusing to silently fall back to the gold/Parquet tier in production mode."
+            )
         from margadrishti.api.repository_postgis import PostgisRepository
 
         return PostgisRepository(s)

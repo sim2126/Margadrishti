@@ -13,8 +13,8 @@ x-backend: &backend
   build: ./backend
   environment: &backend-env
     MARGA_OFFLINE: "false"
-    POSTGIS_DSN: "postgresql://margadrishti:${POSTGIS_PASSWORD:-margadrishti}@postgis:5432/margadrishti"
-    REDIS_URL: "redis://:${REDIS_PASSWORD:-margadrishti}@redis:6379/0"
+    POSTGIS_DSN: "postgresql://margadrishti:${POSTGIS_PASSWORD:?POSTGIS_PASSWORD is required}@postgis:5432/margadrishti"
+    REDIS_URL: "redis://:${REDIS_PASSWORD:?REDIS_PASSWORD is required}@redis:6379/0"
     MARGA_DATA_ROOT: "/app/data"
     RAW_VIOLATIONS_CSV: "/data/jan to may police violation_anonymized791b166.csv"
     # Bounded first-run extent (Koramangala). Non-colon default applies only when UNSET;
@@ -23,7 +23,8 @@ x-backend: &backend
     ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
     CLAUDE_MODEL_REASONING: "${CLAUDE_MODEL_REASONING:-claude-opus-4-8}"
     CLAUDE_MODEL_FAST: "${CLAUDE_MODEL_FAST:-claude-sonnet-4-6}"
-    MARGA_PII_SALT: "${MARGA_PII_SALT:-change-me}"
+    MARGA_PII_SALT: "${MARGA_PII_SALT:?MARGA_PII_SALT is required}"
+    MARGA_CORS_ORIGINS: "${MARGA_CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}"
   depends_on:
     postgis: {condition: service_healthy}
     redis: {condition: service_healthy}
@@ -38,7 +39,7 @@ services:
     image: postgis/postgis:16-3.4
     environment:
       POSTGRES_USER: margadrishti
-      POSTGRES_PASSWORD: "${POSTGIS_PASSWORD:-margadrishti}"
+      POSTGRES_PASSWORD: "${POSTGIS_PASSWORD:?POSTGIS_PASSWORD is required}"
       POSTGRES_DB: margadrishti
     volumes:
       - pgdata:/var/lib/postgresql/data
@@ -50,9 +51,9 @@ services:
 
   redis:
     image: redis:7.4-alpine
-    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:-margadrishti}"]
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?REDIS_PASSWORD is required}"]
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:-margadrishti} ping | grep -q PONG"]
+      test: ["CMD-SHELL", "redis-cli -a ${REDIS_PASSWORD:?REDIS_PASSWORD is required} ping | grep -q PONG"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -70,7 +71,7 @@ services:
     # never the raw CSVs or _restricted PII.
     environment:
       <<: *backend-env
-      POSTGIS_READ_DSN: "postgresql://margadrishti_api:${MARGA_API_PASSWORD:-margadrishti_api}@postgis:5432/margadrishti"
+      POSTGIS_READ_DSN: "postgresql://margadrishti_api:${MARGA_API_PASSWORD:?MARGA_API_PASSWORD is required}@postgis:5432/margadrishti"
     command: uvicorn margadrishti.api.app:app --host 0.0.0.0 --port 8000 --workers 2
     volumes:
       - ./backend/data/gold:/app/data/gold:ro
@@ -94,7 +95,7 @@ services:
     image: ghcr.io/maplibre/martin:v0.13.0
     command: ["--config", "/config/martin.yaml"]
     environment:
-      POSTGIS_DSN: "postgresql://margadrishti:${POSTGIS_PASSWORD:-margadrishti}@postgis:5432/margadrishti"
+      POSTGIS_DSN: "postgresql://margadrishti:${POSTGIS_PASSWORD:?POSTGIS_PASSWORD is required}@postgis:5432/margadrishti"
     volumes:
       - ./backend/infra/martin.yaml:/config/martin.yaml:ro
     depends_on:
@@ -104,3 +105,4 @@ services:
 
 volumes:
   pgdata:
+name: margadrishti

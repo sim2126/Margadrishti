@@ -11,6 +11,11 @@ import math
 import pandas as pd
 
 from margadrishti.api.models import (
+    AreaDeploymentPlanRequest,
+    AreaDeploymentPlanResponse,
+    AreaSegment,
+    AreaSelectionRequest,
+    AreaSummaryResponse,
     CiiMapResponse,
     CiiSegment,
     DeploymentPlanRequest,
@@ -21,6 +26,8 @@ from margadrishti.api.models import (
     RouteModel,
     RouteStop,
     SegmentDetail,
+    TimeSlicedCiiResponse,
+    TimeSlicedSegment,
     TrendsResponse,
     ZoneTrend,
 )
@@ -31,6 +38,31 @@ from margadrishti.optimize.deployment import Stop, optimise_routes
 from margadrishti.simulate.flow import SimulationResult, k_hop_neighborhood, simulate_parking_blockage
 
 _CII_NOTE = "CII is a prioritisation proxy, not a causal congestion measure."
+
+# Area selection scans served segments and tests each centroid against the drawn polygon.
+# Fine at bounded/city scale; full-city production should push this to PostGIS ST_Contains.
+AREA_SCAN_LIMIT = 100_000
+
+
+def _point_in_polygon(x: float, y: float, poly: list[tuple[float, float]]) -> bool:
+    """Ray-casting test. `poly` is [(lon, lat), ...]; (x, y) is (lon, lat).
+    Planar test in lon/lat — accurate for a city-scale lasso. Pure stdlib (no shapely)."""
+    inside = False
+    n = len(poly)
+    j = n - 1
+    for i in range(n):
+        xi, yi = poly[i][0], poly[i][1]
+        xj, yj = poly[j][0], poly[j][1]
+        if ((yi > y) != (yj > y)) and (x < (xj - xi) * (y - yi) / (yj - yi) + xi):
+            inside = not inside
+        j = i
+    return inside
+
+
+def _area_id(poly: list[tuple[float, float]]) -> str:
+    """Stable id for a drawn polygon (same ring → same id) for client correlation/audit."""
+    key = ";".join(f"{x:.5f},{y:.5f}" for x, y in poly)
+    return "area-" + hashlib.sha1(key.encode()).hexdigest()[:10]
 
 
 class UnknownZoneError(ValueError):
@@ -76,24 +108,120 @@ class MargadrishtiService:
             note=_CII_NOTE,
         )
 
+    @staticmethod
+    def _cii_segment(r) -> CiiSegment:
+        """Build a CiiSegment from a cii⋈dim row (shared by the map and area endpoints)."""
+        return CiiSegment(
+            physical_id=r.physical_id, name=r.name,
+            label=_label(r.name, r.junction, r.zone, r.physical_id),
+            junction=r.junction, highway=r.highway, zone=r.zone,
+            cii=round(float(r.cii), 4), observed_count=int(r.observed_count),
+            approval_rate=_clean(r.approval_rate, None),
+            centroid_lat=float(r.centroid_lat), centroid_lon=float(r.centroid_lon),
+            component_risk=round(float(r.cii_component__risk), 4),
+            component_centrality=round(float(r.cii_component__centrality), 4),
+            component_obstruction=round(float(r.cii_component__obstruction), 4),
+        )
+
     def cii_map(self, limit: int = 2000, zone: str | None = None) -> CiiMapResponse:
         df = self.repo.cii_segments(limit=limit, zone=zone)
         interim = bool(df["cii_risk_is_interim_biased"].iloc[0]) if len(df) else False
+        segs = [self._cii_segment(r) for r in df.itertuples()]
+        return CiiMapResponse(segments=segs, provenance=self._provenance(interim))
+
+    def area_summary(self, req: AreaSelectionRequest) -> AreaSummaryResponse:
+        """Geofence/lasso select: keep segments whose centroid falls inside the drawn polygon,
+        then summarise (count, observed enforcement, mean/top CII, zones, ranked candidates).
+        Lets a commander select a market/metro corridor without knowing station labels.
+        Centroid-in-polygon at this scale; full-city production should use PostGIS ST_Contains."""
+        poly = [(p.lon, p.lat) for p in req.polygon]
+        df = self.repo.cii_with_risk(limit=AREA_SCAN_LIMIT)
+        interim = bool(df["cii_risk_is_interim_biased"].iloc[0]) if len(df) else False
         segs = [
-            CiiSegment(
+            AreaSegment(
                 physical_id=r.physical_id, name=r.name,
                 label=_label(r.name, r.junction, r.zone, r.physical_id),
-                junction=r.junction, highway=r.highway, zone=r.zone,
-                cii=round(float(r.cii), 4), observed_count=int(r.observed_count),
-                approval_rate=_clean(r.approval_rate, None),
+                junction=r.junction, zone=r.zone,
+                cii=round(float(_clean(r.cii)), 4),
+                observed_count=int(_clean(r.observed_count)),
+                predicted_risk=_clean(r.predicted_risk, None),
+                # Utility mirrors the deployment optimiser: CII × bias-adjusted predicted risk.
+                priority_utility=round(float(_clean(r.cii)) * (float(_clean(r.predicted_risk)) + 0.01), 6),
                 centroid_lat=float(r.centroid_lat), centroid_lon=float(r.centroid_lon),
-                component_risk=round(float(r.cii_component__risk), 4),
-                component_centrality=round(float(r.cii_component__centrality), 4),
-                component_obstruction=round(float(r.cii_component__obstruction), 4),
+            )
+            for r in df.itertuples()
+            if _point_in_polygon(float(r.centroid_lon), float(r.centroid_lat), poly)
+        ]
+        ciis = [s.cii for s in segs]
+        ranked = sorted(segs, key=lambda s: s.cii, reverse=True)
+        return AreaSummaryResponse(
+            area_id=_area_id(poly),
+            n_segments=len(segs),
+            observed_count=sum(s.observed_count for s in segs),
+            mean_cii=round(sum(ciis) / len(ciis), 4) if ciis else 0.0,
+            max_cii=round(max(ciis), 4) if ciis else 0.0,
+            zones=sorted({s.zone for s in segs if s.zone}),
+            top_segments=ranked[: req.limit],
+            provenance=self._provenance(interim),
+        )
+
+    def _area_segments_for_deployment(self, req: AreaSelectionRequest) -> tuple[str, list[AreaSegment], bool]:
+        """Return all in-area segments for deployment candidate selection.
+
+        Kept separate from `area_summary` because the summary is CII-ranked for map
+        explanation, while deployment should candidate-rank by priority utility.
+        """
+        poly = [(p.lon, p.lat) for p in req.polygon]
+        df = self.repo.cii_with_risk(limit=AREA_SCAN_LIMIT)
+        interim = bool(df["cii_risk_is_interim_biased"].iloc[0]) if len(df) else False
+        segs = [
+            AreaSegment(
+                physical_id=r.physical_id, name=r.name,
+                label=_label(r.name, r.junction, r.zone, r.physical_id),
+                junction=r.junction, zone=r.zone,
+                cii=round(float(_clean(r.cii)), 4),
+                observed_count=int(_clean(r.observed_count)),
+                predicted_risk=_clean(r.predicted_risk, None),
+                priority_utility=round(float(_clean(r.cii)) * (float(_clean(r.predicted_risk)) + 0.01), 6),
+                centroid_lat=float(r.centroid_lat), centroid_lon=float(r.centroid_lon),
+            )
+            for r in df.itertuples()
+            if _point_in_polygon(float(r.centroid_lon), float(r.centroid_lat), poly)
+        ]
+        return _area_id(poly), segs, interim
+
+    def cii_map_hourly(
+        self,
+        hour: int | None = None,
+        day_of_week: int | None = None,
+        zone: str | None = None,
+        limit: int = 2000,
+    ) -> TimeSlicedCiiResponse:
+        """Time-sliced OBSERVED-ENFORCEMENT intensity for the map/list scrubber.
+
+        Honest by construction: serves the observed hour-of-week signal (labelled as such),
+        not a fabricated per-hour CII. `hour_intensity` is the window count scaled to the
+        busiest segment in the set, so the map can shade/elevate and the list can re-rank.
+        """
+        df = self.repo.hourly_observed(hour=hour, day_of_week=day_of_week, zone=zone, limit=limit)
+        interim = bool(df["cii_risk_is_interim_biased"].iloc[0]) if len(df) else False
+        max_w = float(df["window_count"].max()) if len(df) else 0.0
+        segs = [
+            TimeSlicedSegment(
+                physical_id=r.physical_id, name=r.name,
+                label=_label(r.name, r.junction, r.zone, r.physical_id),
+                junction=r.junction, zone=r.zone,
+                cii=round(float(_clean(r.cii)), 4),
+                window_observed_count=int(_clean(r.window_count)),
+                hour_intensity=round(float(_clean(r.window_count)) / max_w, 4) if max_w > 0 else 0.0,
+                centroid_lat=float(r.centroid_lat), centroid_lon=float(r.centroid_lon),
             )
             for r in df.itertuples()
         ]
-        return CiiMapResponse(segments=segs, provenance=self._provenance(interim))
+        return TimeSlicedCiiResponse(
+            hour=hour, day_of_week=day_of_week, segments=segs,
+            provenance=self._provenance(interim),
+        )
 
     def segment_detail(self, physical_id: str) -> SegmentDetail | None:
         d = self.repo.segment_detail(physical_id)
@@ -182,6 +310,53 @@ class MargadrishtiService:
             method_caveats=result.method_caveats,
             requires_human_approval=result.requires_human_approval,
             provenance=self._provenance(),
+        )
+
+    def area_deployment_plan(self, req: AreaDeploymentPlanRequest) -> AreaDeploymentPlanResponse:
+        """Geofence/lasso select -> advisory patrol plan.
+
+        `zone` remains a jurisdiction concept. A drawn polygon is an operator-defined
+        planning area, so this response exposes `area_id` and touched `zones` separately.
+        """
+        area_id, segs, interim = self._area_segments_for_deployment(req)
+        candidates = sorted(segs, key=lambda s: s.priority_utility, reverse=True)[: req.limit]
+        labels = {s.physical_id: s.label for s in candidates}
+        stops = [
+            Stop(
+                physical_id=s.physical_id,
+                lat=s.centroid_lat,
+                lon=s.centroid_lon,
+                priority_utility=s.priority_utility,
+            )
+            for s in candidates
+        ]
+        result = optimise_routes(
+            stops,
+            n_units=req.n_units,
+            shift_minutes=req.shift_minutes,
+            dwell_minutes=req.dwell_minutes,
+            speed_kmph=req.speed_kmph,
+        )
+        return AreaDeploymentPlanResponse(
+            area_id=area_id,
+            n_segments=len(segs),
+            n_candidate_segments=len(stops),
+            zones=sorted({s.zone for s in segs if s.zone}),
+            routes=[
+                RouteModel(
+                    unit=r.unit,
+                    stops=[RouteStop(physical_id=p, label=labels.get(p, p)) for p in r.stops],
+                    priority_utility=r.priority_utility,
+                    minutes=r.minutes,
+                )
+                for r in result.routes
+            ],
+            total_priority_utility=result.total_priority_utility,
+            coverage_fraction=round(result.coverage_fraction, 4),
+            solver=result.solver,
+            method_caveats=result.method_caveats,
+            requires_human_approval=result.requires_human_approval,
+            provenance=self._provenance(interim),
         )
 
     # --- upliftment: graph context, what-if simulation, evidence-kinded context -------

@@ -43,6 +43,6 @@ Point `VITE_API_URL` at the running Margadrishti API (`docker compose up`, or `m
 
 - The map currently shows the **all-day aggregate**; the time-of-day scrubber animates a
   clock and is wired into UI state, but per-hour map shading needs a **time-sliced CII
-  endpoint** (tracked in `../backend_remaining.md`).
+  endpoint**, which is a planned production endpoint.
 - H3 cells are derived from segment centroids on the client; once the API serves vector
   tiles (`tiles_cii` via Martin) at city scale, the heatmap can switch to MVT tiles.

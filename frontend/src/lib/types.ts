@@ -107,6 +107,8 @@ export interface CopilotResponse {
   tool_calls: string[];
   model: string;
   provenance: Array<Record<string, unknown>>;
+  mode: "live" | "fallback";
+  notice: string | null;
 }
 
 export interface AffectedSegment {

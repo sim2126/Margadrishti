@@ -64,6 +64,26 @@ class GoldRepository:
             params,
         )
 
+    def cii_with_risk(self, limit: int = 2000, zone: str | None = None) -> pd.DataFrame:
+        """CII ⋈ geometry ⋈ predicted risk — area selection needs risk + priority utility."""
+        where = "WHERE d.zone = ?" if zone else ""
+        params = [zone, limit] if zone else [limit]
+        return self._q(
+            f"""
+            SELECT c.physical_id, c.name, c.highway, c.cii, c.cii_risk_is_interim_biased,
+                   c.observed_count, c.approval_rate,
+                   d.centroid_lat, d.centroid_lon, d.zone, d.junction,
+                   p.risk AS predicted_risk
+            FROM read_parquet('{self._paths["cii"]}') c
+            JOIN read_parquet('{self._paths["dim"]}') d USING (physical_id)
+            LEFT JOIN read_parquet('{self._paths["preds"]}') p USING (physical_id)
+            {where}
+            ORDER BY c.cii DESC
+            LIMIT ?
+            """,
+            params,
+        )
+
     def segment_detail(self, physical_id: str) -> dict | None:
         df = self._q(
             f"""
@@ -86,6 +106,55 @@ class GoldRepository:
             f"""SELECT hour_of_week, count FROM read_parquet('{self._paths["how"]}')
                 WHERE physical_id = ? ORDER BY hour_of_week""",
             [physical_id],
+        )
+
+    def hourly_observed(
+        self,
+        hour: int | None = None,
+        day_of_week: int | None = None,
+        zone: str | None = None,
+        limit: int = 2000,
+    ) -> pd.DataFrame:
+        """Observed-enforcement counts in an IST time window, per segment, joined to CII/geometry.
+
+        hour_of_week = weekday*24 + hour (IST), so an hour-of-day slice sums that hour across
+        all weekdays; a day_of_week+hour slice picks one cell. This is OBSERVED ENFORCEMENT,
+        not prevalence, and not a per-hour CII — callers must keep that label.
+        """
+        preds: list[str] = []
+        params: list = []
+        if day_of_week is not None and hour is not None:
+            preds.append("hour_of_week = ?")
+            params.append(day_of_week * 24 + hour)
+        elif hour is not None:
+            preds.append("(hour_of_week % 24) = ?")
+            params.append(hour)
+        elif day_of_week is not None:
+            preds.append("hour_of_week >= ? AND hour_of_week < ?")
+            params += [day_of_week * 24, day_of_week * 24 + 24]
+        win_where = ("WHERE " + " AND ".join(preds)) if preds else ""
+        zone_where = "WHERE d.zone = ?" if zone else ""
+        params += ([zone] if zone else []) + [limit]
+        return self._q(
+            f"""
+            WITH win AS (
+                SELECT physical_id, SUM(count) AS window_count
+                FROM read_parquet('{self._paths["how"]}')
+                {win_where}
+                GROUP BY physical_id
+            )
+            SELECT c.physical_id, c.name, c.highway, c.cii, c.cii_risk_is_interim_biased,
+                   c.observed_count, c.approval_rate,
+                   d.centroid_lat, d.centroid_lon, d.zone, d.junction,
+                   COALESCE(w.window_count, 0) AS window_count
+            FROM read_parquet('{self._paths["cii"]}') c
+            JOIN read_parquet('{self._paths["dim"]}') d USING (physical_id)
+            LEFT JOIN win w USING (physical_id)
+            {zone_where}
+            ORDER BY window_count DESC, c.cii DESC
+            LIMIT ?
+            """,
+            params,
         )
 
     # --- forecast / analytics ---------------------------------------------

@@ -12,15 +12,18 @@ import type {
 
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
+// One id per page load — lets the backend apply its per-session copilot cap.
+const SESSION_ID = globalThis.crypto?.randomUUID?.() ?? Math.random().toString(36).slice(2);
+
 async function get<T>(path: string): Promise<T> {
   const r = await fetch(`${API}${path}`);
   if (!r.ok) throw new Error(`${r.status} ${r.statusText} for ${path}`);
   return r.json() as Promise<T>;
 }
-async function post<T>(path: string, body: unknown): Promise<T> {
+async function post<T>(path: string, body: unknown, headers?: Record<string, string>): Promise<T> {
   const r = await fetch(`${API}${path}`, {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...headers },
     body: JSON.stringify(body),
   });
   if (!r.ok) throw new Error(`${r.status} ${r.statusText} for ${path}`);
@@ -60,7 +63,8 @@ export const useDeploymentPlan = () =>
 
 export const useCopilot = () =>
   useMutation({
-    mutationFn: (body: { question: string; lang?: string }) => post<CopilotResponse>("/copilot/ask", body),
+    mutationFn: (body: { question: string; lang?: string }) =>
+      post<CopilotResponse>("/copilot/ask", body, { "x-session-id": SESSION_ID }),
   });
 
 export const useSimulateBlockage = () =>

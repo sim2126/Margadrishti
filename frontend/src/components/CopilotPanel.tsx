@@ -1,5 +1,5 @@
-import { Send, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { Loader2, Send, Sparkles } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useCopilot } from "@/lib/api";
 import { Button, StatLabel } from "./ui";
 
@@ -8,6 +8,28 @@ const SUGGESTIONS = [
   "Where should I deploy 3 units in Madiwala?",
   "Observed enforcement density by zone",
 ];
+
+const THINKING_PHRASES = [
+  "Thinking…",
+  "Reading your enforcement data…",
+  "Checking hotspots & forecasts…",
+  "Margadrishti AI is working…",
+  "Composing the answer…",
+];
+
+function ThinkingIndicator() {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setI((n) => (n + 1) % THINKING_PHRASES.length), 1400);
+    return () => clearInterval(t);
+  }, []);
+  return (
+    <div role="status" aria-live="polite" className="flex items-center gap-2 text-sm text-(--color-muted)">
+      <Loader2 className="h-4 w-4 shrink-0 animate-spin text-(--color-brand)" />
+      <span className="animate-pulse">{THINKING_PHRASES[i]}</span>
+    </div>
+  );
+}
 
 export function CopilotPanel() {
   const [q, setQ] = useState("");
@@ -25,10 +47,15 @@ export function CopilotPanel() {
       </p>
 
       <div className="my-3 flex-1 overflow-y-auto rounded-(--radius) border bg-(--color-surface-2)/30 p-3">
-        {copilot.isPending && <p className="text-sm text-(--color-muted)">Thinking…</p>}
+        {copilot.isPending && <ThinkingIndicator />}
         {copilot.isError && <p className="text-sm text-impact-4">Copilot unavailable.</p>}
         {copilot.data ? (
           <div className="space-y-2">
+            {copilot.data.notice && (
+              <p className="rounded-(--radius) border border-(--color-border)/60 bg-(--color-surface-2)/40 px-2 py-1 text-[11px] text-(--color-muted)">
+                {copilot.data.notice}
+              </p>
+            )}
             <p className="text-sm leading-relaxed text-(--color-fg)">{copilot.data.answer}</p>
             <div className="flex flex-wrap gap-1.5 pt-1">
               {copilot.data.tool_calls.map((t, i) => (
@@ -37,7 +64,7 @@ export function CopilotPanel() {
                 </span>
               ))}
               <span className="rounded-full border px-2 py-0.5 text-[10px] text-(--color-muted)">
-                {copilot.data.model}
+                {copilot.data.mode === "live" ? copilot.data.model : "built-in answer"}
               </span>
             </div>
           </div>

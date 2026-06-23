@@ -64,6 +64,21 @@ def _apply_schema(conn) -> None:
         conn.execute(text(stmt))
 
 
+def _apply_runtime_secrets(conn, settings: Settings) -> None:
+    """Apply deploy-time secrets that must not be hard-coded into schema.sql."""
+    from sqlalchemy import text
+
+    if not settings.api_db_password:
+        raise SystemExit(
+            "MARGA_API_PASSWORD is not set; refusing to create the API DB role "
+            "with a default or blank password."
+        )
+    conn.execute(
+        text("ALTER ROLE margadrishti_api WITH LOGIN PASSWORD :password"),
+        {"password": settings.api_db_password},
+    )
+
+
 def _split_sql(sql: str) -> list[str]:
     """Split into executable statements on ';', keeping dollar-quoted blocks
     (DO $$ ... $$) intact. Full-line comments are stripped first so a leading comment
@@ -148,6 +163,7 @@ def publish_all(settings: Settings | None = None) -> dict:
         # Serialise concurrent publishers (staging table names are shared).
         conn.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": _PUBLISH_LOCK_KEY})
         _apply_schema(conn)
+        _apply_runtime_secrets(conn, s)
         _swap_segments_dim(conn, pd.read_parquet(gold / "segments_dim.parquet"))
         published = ["segments_dim"]
         for name, table in PLAIN_TABLES:
