@@ -26,17 +26,17 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.error) {
       return (
         <div className="flex h-full w-full items-center justify-center p-6">
-          <div className="max-w-sm rounded-[--radius] border bg-[--color-surface] p-5 text-center">
-            <div className="text-sm font-semibold text-[--color-fg]">
+          <div className="max-w-sm rounded-(--radius) border bg-(--color-surface) p-5 text-center">
+            <div className="text-sm font-semibold text-(--color-fg)">
               {this.props.label ?? "Something went wrong"}
             </div>
-            <p className="mt-1 text-xs text-[--color-muted]">
+            <p className="mt-1 text-xs text-(--color-muted)">
               This panel hit an unexpected error and was contained. The rest of the console
               keeps working.
             </p>
             <button
               onClick={() => this.setState({ error: null })}
-              className="mt-3 rounded-[--radius] border px-3 py-1.5 text-xs text-[--color-fg] hover:bg-[--color-surface-2]"
+              className="mt-3 rounded-(--radius) border px-3 py-1.5 text-xs text-(--color-fg) hover:bg-(--color-surface-2)"
             >
               Retry
             </button>

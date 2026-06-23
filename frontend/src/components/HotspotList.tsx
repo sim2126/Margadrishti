@@ -16,24 +16,24 @@ export function HotspotList() {
       <div className="border-b px-4 py-3">
         <div className="flex items-center justify-between">
           <StatLabel>Hotspots {zone ? `· ${zone}` : ""}</StatLabel>
-          <span className="text-[11px] text-[--color-muted]">{top.length} · by CII</span>
+          <span className="text-[11px] text-(--color-muted)">{top.length} · by CII</span>
         </div>
-        <p className="mt-0.5 text-[11px] text-[--color-muted]">
+        <p className="mt-0.5 text-[11px] text-(--color-muted)">
           Congestion-Impact Index — a prioritisation proxy
         </p>
       </div>
       <div className="flex-1 overflow-y-auto">
-        {isLoading && <p className="p-4 text-sm text-[--color-muted]">Loading…</p>}
+        {isLoading && <p className="p-4 text-sm text-(--color-muted)">Loading…</p>}
         {top.map((s, i) => (
           <button
             key={s.physical_id}
             onClick={() => select(s.physical_id)}
             className={cn(
-              "flex w-full items-center gap-3 border-b border-[--color-border]/60 px-4 py-2.5 text-left transition-colors hover:bg-[--color-surface-2]",
-              selected === s.physical_id && "bg-[--color-surface-2]",
+              "flex w-full items-center gap-3 border-b border-(--color-border)/60 px-4 py-2.5 text-left transition-colors hover:bg-(--color-surface-2)",
+              selected === s.physical_id && "bg-(--color-surface-2)",
             )}
           >
-            <span className="w-5 shrink-0 text-right text-xs tabular-nums text-[--color-muted]">
+            <span className="w-5 shrink-0 text-right text-xs tabular-nums text-(--color-muted)">
               {i + 1}
             </span>
             <span
@@ -41,8 +41,8 @@ export function HotspotList() {
               style={{ background: ciiCss(s.cii) }}
             />
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-sm text-[--color-fg]">{s.name ?? "Unnamed road"}</span>
-              <span className="block truncate text-[11px] text-[--color-muted]">
+              <span className="block truncate text-sm text-(--color-fg)">{s.name ?? "Unnamed road"}</span>
+              <span className="block truncate text-[11px] text-(--color-muted)">
                 {s.junction ?? s.zone ?? "—"} · {s.observed_count} observed
               </span>
             </span>
@@ -55,11 +55,11 @@ export function HotspotList() {
           </button>
         ))}
         {!isLoading && top.length === 0 && (
-          <p className="p-4 text-sm text-[--color-muted]">No segments for this filter.</p>
+          <p className="p-4 text-sm text-(--color-muted)">No segments for this filter.</p>
         )}
       </div>
       {top[0] && (
-        <div className="border-t px-4 py-2 text-[11px] text-[--color-muted]">
+        <div className="border-t px-4 py-2 text-[11px] text-(--color-muted)">
           Top: {ciiLabel(top[0].cii)} impact — {top[0].label}
         </div>
       )}

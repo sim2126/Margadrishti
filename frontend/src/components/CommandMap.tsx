@@ -120,43 +120,43 @@ export function CommandMap() {
         <DeckOverlay layers={simActive ? [layer, simLayer] : [layer]} interleaved />
       </MapGL>
 
-      <div className="pointer-events-none absolute right-4 top-4 rounded-full border bg-[--color-surface]/90 px-2.5 py-1 text-[11px] text-[--color-muted] backdrop-blur">
+      <div className="pointer-events-none absolute right-4 top-4 rounded-full border bg-(--color-surface)/90 px-2.5 py-1 text-[11px] text-(--color-muted) backdrop-blur">
         H3 r{H3_RES} · 3D impact
       </div>
 
       {simActive && (
-        <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-full border bg-[--color-surface]/90 px-3 py-1 text-xs text-[--color-fg]">
+        <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-full border bg-(--color-surface)/90 px-3 py-1 text-xs text-(--color-fg)">
           What-if active · <span className="text-[#38bdf8]">●</span> blocked segment ·{" "}
           {sim!.affected.length} downstream affected
         </div>
       )}
 
       {isLoading && (
-        <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-full border bg-[--color-surface]/90 px-3 py-1 text-xs text-[--color-muted]">
+        <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-full border bg-(--color-surface)/90 px-3 py-1 text-xs text-(--color-muted)">
           Loading CII surface…
         </div>
       )}
       {!isLoading && isError && (
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-w-xs rounded-[--radius] border border-[--color-impact-4]/40 bg-[--color-surface]/95 px-5 py-4 text-center text-sm text-[--color-muted]">
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 max-w-xs rounded-(--radius) border border-(--color-impact-4)/40 bg-(--color-surface)/95 px-5 py-4 text-center text-sm text-(--color-muted)">
           Couldn't reach the API. Check that the Margadrishti API is running and{" "}
-          <code className="text-[--color-fg]">VITE_API_URL</code> points to it.
+          <code className="text-(--color-fg)">VITE_API_URL</code> points to it.
         </div>
       )}
       {!isLoading && !isError && hexes.length === 0 && (
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-[--radius] border bg-[--color-surface]/95 px-5 py-4 text-center text-sm text-[--color-muted]">
-          No CII data for this filter. Run the pipeline (<code className="text-[--color-fg]">make worker</code>)
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-(--radius) border bg-(--color-surface)/95 px-5 py-4 text-center text-sm text-(--color-muted)">
+          No CII data for this filter. Run the pipeline (<code className="text-(--color-fg)">make worker</code>)
           or clear the zone filter.
         </div>
       )}
       {hover && (
         <div
-          className="pointer-events-none absolute z-10 max-w-[240px] rounded-[--radius] border bg-[--color-surface]/95 px-3 py-2 text-xs shadow-lg"
+          className="pointer-events-none absolute z-10 max-w-[240px] rounded-(--radius) border bg-(--color-surface)/95 px-3 py-2 text-xs shadow-lg"
           style={{ left: hover.x + 12, top: hover.y + 12 }}
         >
-          <div className="font-medium text-[--color-fg]">{hover.hex.top.label}</div>
-          <div className="mt-1 text-[--color-muted]">
-            CII <span className="text-[--color-fg]">{hover.hex.cii.toFixed(3)}</span> · observed{" "}
-            <span className="text-[--color-fg]">{hover.hex.count}</span>
+          <div className="font-medium text-(--color-fg)">{hover.hex.top.label}</div>
+          <div className="mt-1 text-(--color-muted)">
+            CII <span className="text-(--color-fg)">{hover.hex.cii.toFixed(3)}</span> · observed{" "}
+            <span className="text-(--color-fg)">{hover.hex.count}</span>
           </div>
         </div>
       )}
@@ -168,8 +168,8 @@ export function CommandMap() {
 function Legend() {
   const stops = [0.1, 0.4, 0.65, 0.85, 1];
   return (
-    <div className="absolute bottom-4 left-4 rounded-[--radius] border bg-[--color-surface]/90 px-3 py-2 backdrop-blur">
-      <div className="mb-1.5 text-[11px] uppercase tracking-wider text-[--color-muted]">
+    <div className="absolute bottom-4 left-4 rounded-(--radius) border bg-(--color-surface)/90 px-3 py-2 backdrop-blur">
+      <div className="mb-1.5 text-[11px] uppercase tracking-wider text-(--color-muted)">
         Congestion-Impact Index
       </div>
       <div className="flex items-center gap-1">
@@ -178,7 +178,7 @@ function Legend() {
           return <span key={c} className="h-2.5 w-8" style={{ background: `rgb(${r} ${g} ${b})` }} />;
         })}
       </div>
-      <div className="mt-1 flex justify-between text-[10px] text-[--color-muted]">
+      <div className="mt-1 flex justify-between text-[10px] text-(--color-muted)">
         <span>Low</span>
         <span>Critical</span>
       </div>

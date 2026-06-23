@@ -83,6 +83,18 @@ input:focus {
   outline: none;
 }
 
+/* Tailwind v4 no longer sets pointer on buttons — restore the standard affordance. */
+button:not(:disabled),
+[role="button"]:not([aria-disabled="true"]),
+select,
+summary,
+label[for] {
+  cursor: pointer;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;

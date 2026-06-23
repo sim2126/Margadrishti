@@ -14,11 +14,11 @@ function WhyBar({ label, value }: { label: string; value: number }) {
   return (
     <div>
       <div className="mb-1 flex items-center justify-between text-xs">
-        <span className="text-[--color-fg]">{label}</span>
-        <span className="tabular-nums text-[--color-muted]">{pct}</span>
+        <span className="text-(--color-fg)">{label}</span>
+        <span className="tabular-nums text-(--color-muted)">{pct}</span>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-[--color-surface-2]">
-        <div className="h-full rounded-full bg-[--color-brand]" style={{ width: `${Math.max(2, pct)}%` }} />
+      <div className="h-1.5 overflow-hidden rounded-full bg-(--color-surface-2)">
+        <div className="h-full rounded-full bg-(--color-brand)" style={{ width: `${Math.max(2, pct)}%` }} />
       </div>
     </div>
   );
@@ -27,10 +27,10 @@ function WhyBar({ label, value }: { label: string; value: number }) {
 function KindChip({ kind }: { kind: "observed" | "predicted" | "simulated" }) {
   const tone =
     kind === "observed"
-      ? "text-[--color-brand] border-[--color-brand]/40 bg-[--color-brand]/10"
+      ? "text-(--color-brand) border-(--color-brand)/40 bg-(--color-brand)/10"
       : kind === "predicted"
         ? "text-[#6aa9ff] border-[#6aa9ff]/40 bg-[#6aa9ff]/10"
-        : "text-[--color-impact-2] border-[--color-impact-2]/40 bg-[--color-impact-2]/10";
+        : "text-(--color-impact-2) border-(--color-impact-2)/40 bg-(--color-impact-2)/10";
   return <span className={cn("rounded-full border px-1.5 py-0.5 text-[10px] capitalize", tone)}>{kind}</span>;
 }
 
@@ -47,12 +47,12 @@ export function SegmentDetail() {
     <div className="flex h-full flex-col gap-5 overflow-y-auto p-4">
       <div>
         <div className="flex items-start justify-between gap-2">
-          <h2 className="text-lg font-semibold leading-tight text-[--color-fg]">
+          <h2 className="text-lg font-semibold leading-tight text-(--color-fg)">
             {d.name ?? "Unnamed road"}
           </h2>
           <Badge style={{ borderColor: ciiCss(d.cii), color: ciiCss(d.cii) }}>{ciiLabel(d.cii)}</Badge>
         </div>
-        <p className="mt-0.5 text-xs text-[--color-muted]">
+        <p className="mt-0.5 text-xs text-(--color-muted)">
           {d.junction ?? "—"}{d.zone ? ` · ${d.zone} zone` : ""}
         </p>
       </div>
@@ -76,7 +76,7 @@ export function SegmentDetail() {
       </div>
 
       {ctx && (
-        <div className="rounded-[--radius] border border-[--color-border]/60 bg-[--color-surface-2]/30 p-3">
+        <div className="rounded-(--radius) border border-(--color-border)/60 bg-(--color-surface-2)/30 p-3">
           <div className="mb-2 flex items-center gap-2">
             <StatLabel>Evidence &amp; data gaps</StatLabel>
             <KindChip kind="observed" />
@@ -84,14 +84,14 @@ export function SegmentDetail() {
             <KindChip kind="simulated" />
           </div>
           {!ctx.uncertainty.learned_model_shipped && (
-            <p className="mb-1.5 text-[11px] text-[--color-impact-2]">
+            <p className="mb-1.5 text-[11px] text-(--color-impact-2)">
               ⚠ Learned model did not beat baselines on both gates → recency baseline in use.
             </p>
           )}
-          <ul className="space-y-1 text-[11px] text-[--color-muted]">
+          <ul className="space-y-1 text-[11px] text-(--color-muted)">
             {ctx.data_gaps.map((g, i) => (
               <li key={i} className="flex gap-1.5">
-                <span className="text-[--color-brand]">·</span>
+                <span className="text-(--color-brand)">·</span>
                 <span>{g}</span>
               </li>
             ))}
@@ -106,25 +106,25 @@ export function SegmentDetail() {
 
 function Stat({ label, value, accent }: { label: string; value: string; accent?: string }) {
   return (
-    <div className="rounded-[--radius] border bg-[--color-surface-2]/40 px-3 py-2">
+    <div className="rounded-(--radius) border bg-(--color-surface-2)/40 px-3 py-2">
       <div className="text-lg font-semibold tabular-nums" style={{ color: accent }}>
         {value}
       </div>
-      <div className="text-[10px] uppercase tracking-wider text-[--color-muted]">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-(--color-muted)">{label}</div>
     </div>
   );
 }
 
 function Provenance({ d }: { d: import("@/lib/types").Provenance }) {
   return (
-    <div className="mt-auto rounded-[--radius] border border-[--color-border]/60 bg-[--color-surface-2]/30 p-3 text-[11px] text-[--color-muted]">
+    <div className="mt-auto rounded-(--radius) border border-(--color-border)/60 bg-(--color-surface-2)/30 p-3 text-[11px] text-(--color-muted)">
       <div className="flex flex-wrap gap-x-3 gap-y-0.5">
-        <span>As-of <span className="text-[--color-fg]">{d.as_of}</span></span>
-        <span>Model <span className="text-[--color-fg]">{d.model_version}</span></span>
+        <span>As-of <span className="text-(--color-fg)">{d.as_of}</span></span>
+        <span>Model <span className="text-(--color-fg)">{d.model_version}</span></span>
       </div>
       <div className="mt-0.5">Dataset {d.dataset_version} · features {d.feature_version}</div>
       {d.cii_risk_is_interim_biased && (
-        <div className="mt-1 text-[--color-impact-3]">
+        <div className="mt-1 text-(--color-impact-3)">
           ⚠ CII risk term is interim (raw density) — bias-adjusted after model run.
         </div>
       )}
@@ -135,7 +135,7 @@ function Provenance({ d }: { d: import("@/lib/types").Provenance }) {
 
 function Empty({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex h-full items-center justify-center p-6 text-center text-sm text-[--color-muted]">
+    <div className="flex h-full items-center justify-center p-6 text-center text-sm text-(--color-muted)">
       {children}
     </div>
   );

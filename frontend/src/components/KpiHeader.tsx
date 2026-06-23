@@ -21,16 +21,16 @@ export function KpiHeader() {
   const ciiVersion = trends?.provenance?.cii_version ?? "—";
 
   return (
-    <header className="flex items-center justify-between gap-6 border-b bg-[--color-surface] px-5 py-3">
+    <header className="flex items-center justify-between gap-6 border-b bg-(--color-surface) px-5 py-3">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-[--radius] bg-[--color-logo-tile] ring-1 ring-inset ring-[--color-border]">
+        <div className="flex h-10 w-10 items-center justify-center rounded-(--radius) bg-(--color-logo-tile) ring-1 ring-inset ring-(--color-border)">
           <BrandMark className="h-8 w-8" decorative />
         </div>
         <div>
-          <div className="text-[15px] font-semibold leading-tight tracking-[-0.01em] text-[--color-fg]">
+          <div className="text-[15px] font-semibold leading-tight tracking-[-0.01em] text-(--color-fg)">
             Margadrishti
           </div>
-          <div className="text-[11px] text-[--color-muted]">Command Center · Bengaluru Traffic Police</div>
+          <div className="text-[11px] text-(--color-muted)">Command Center · Bengaluru Traffic Police</div>
         </div>
       </div>
 
@@ -45,7 +45,7 @@ export function KpiHeader() {
         <select
           value={zone ?? ""}
           onChange={(e) => setZone(e.target.value || null)}
-          className="h-9 rounded-[--radius] border bg-[--color-surface-2] px-2 text-sm text-[--color-fg]"
+          className="h-9 rounded-(--radius) border bg-(--color-surface-2) px-2 text-sm text-(--color-fg)"
         >
           <option value="">All zones</option>
           {(zonesData?.zones ?? []).map((z) => (
@@ -56,17 +56,17 @@ export function KpiHeader() {
         </select>
         {apiDown ? (
           <span
-            className="flex items-center gap-1.5 rounded-full border border-[--color-impact-4]/40 bg-[--color-impact-4]/10 px-2.5 py-1 text-[11px] text-[--color-impact-4]"
+            className="flex items-center gap-1.5 rounded-full border border-(--color-impact-4)/40 bg-(--color-impact-4)/10 px-2.5 py-1 text-[11px] text-(--color-impact-4)"
             title="Cannot reach the Margadrishti API (VITE_API_URL)"
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-[--color-impact-4]" /> API offline
+            <span className="h-1.5 w-1.5 rounded-full bg-(--color-impact-4)" /> API offline
           </span>
         ) : (
           <span
-            className="flex items-center gap-1.5 rounded-full border bg-[--color-surface-2]/60 px-2.5 py-1 text-[11px] text-[--color-muted]"
+            className="flex items-center gap-1.5 rounded-full border bg-(--color-surface-2)/60 px-2.5 py-1 text-[11px] text-(--color-muted)"
             title={`Healthy · model ${(health?.model_version as string) ?? "—"}`}
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-[--color-impact-1]" />
+            <span className="h-1.5 w-1.5 rounded-full bg-(--color-impact-1)" />
             CII {ciiVersion}
           </span>
         )}
@@ -85,12 +85,12 @@ export function KpiHeader() {
 
 function Kpi({ label, value, hint }: { label: string; value: string; hint?: string }) {
   return (
-    <div className="min-w-[120px] rounded-[--radius] border bg-[--color-surface-2]/40 px-4 py-1.5">
+    <div className="min-w-[120px] rounded-(--radius) border bg-(--color-surface-2)/40 px-4 py-1.5">
       <div className="flex items-baseline gap-1.5">
-        <span className="text-lg font-semibold tabular-nums text-[--color-fg]">{value}</span>
-        {hint && <span className="text-[10px] text-[--color-muted]">{hint}</span>}
+        <span className="text-lg font-semibold tabular-nums text-(--color-fg)">{value}</span>
+        {hint && <span className="text-[10px] text-(--color-muted)">{hint}</span>}
       </div>
-      <div className="text-[10px] uppercase tracking-wider text-[--color-muted]">{label}</div>
+      <div className="text-[10px] uppercase tracking-wider text-(--color-muted)">{label}</div>
     </div>
   );
 }
