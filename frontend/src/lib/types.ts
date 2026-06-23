@@ -122,6 +122,8 @@ export interface TrendsResponse {
 export interface RouteStop {
   physical_id: string;
   label: string;
+  centroid_lat: number | null;
+  centroid_lon: number | null;
 }
 export interface RouteModel {
   unit: number;
@@ -185,6 +187,30 @@ export interface AreaDeploymentPlanResponse {
   method_caveats: string;
   area_caveats: string;
   requires_human_approval: boolean;
+  provenance: Provenance;
+}
+
+export interface EvalMetric {
+  model: string;
+  pr_auc: number;
+  precision_at_25: number;
+  recall_at_25: number;
+  n_test_rows: number;
+}
+
+export interface EvaluationSummaryResponse {
+  model_version: string;
+  winner: string;
+  a_candidate_shipped: boolean;
+  n_input_rows: number;
+  n_in_scope_rows: number;
+  n_segments: number;
+  road_network_version: string;
+  rolling_origin: EvalMetric[];
+  held_out_zone: EvalMetric[];
+  feature_importance: Record<string, number>;
+  key_findings: string[];
+  caveats: string;
   provenance: Provenance;
 }
 

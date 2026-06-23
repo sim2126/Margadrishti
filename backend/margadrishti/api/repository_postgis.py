@@ -193,3 +193,10 @@ class PostgisRepository:
         if not path.exists():
             return {"etl": {}, "model": {}}
         return json.loads(path.read_text(encoding="utf-8"))
+
+    def eval_report(self) -> dict:
+        """Model evaluation artifact written by the training pipeline."""
+        path = self.s.gold / "eval_report.json"
+        if not path.exists():
+            return {}
+        return json.loads(path.read_text(encoding="utf-8"))

@@ -5,6 +5,7 @@ import { CopilotPanel } from "@/components/CopilotPanel";
 import { DeploymentPanel } from "@/components/DeploymentPanel";
 import { HotspotList } from "@/components/HotspotList";
 import { KpiHeader } from "@/components/KpiHeader";
+import { ProofPanel } from "@/components/ProofPanel";
 import { SegmentDetail } from "@/components/SegmentDetail";
 import { TimeScrubber } from "@/components/TimeScrubber";
 import { WhatIfPanel } from "@/components/WhatIfPanel";
@@ -25,10 +26,13 @@ export function CommandCenter() {
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-(--color-bg)">
       <KpiHeader />
-      <div className="grid min-h-0 flex-1 grid-cols-[320px_1fr_380px] grid-rows-[minmax(0,1fr)]">
+      <div className="grid min-h-0 flex-1 grid-cols-[340px_1fr_380px] grid-rows-[minmax(0,1fr)]">
         {/* Left rail — ranked hotspots */}
-        <aside className="min-h-0 overflow-hidden border-r bg-(--color-surface)">
-          <HotspotList />
+        <aside className="flex min-h-0 flex-col overflow-hidden border-r bg-(--color-surface)">
+          <ProofPanel />
+          <div className="min-h-0 flex-1">
+            <HotspotList />
+          </div>
         </aside>
 
         {/* Center — the operational picture */}

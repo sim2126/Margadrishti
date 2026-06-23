@@ -20,6 +20,8 @@ from margadrishti.api.models import (
     CiiSegment,
     DeploymentPlanRequest,
     DeploymentPlanResponse,
+    EvalMetric,
+    EvaluationSummaryResponse,
     ForecastItem,
     ForecastResponse,
     Provenance,
@@ -273,13 +275,72 @@ class MargadrishtiService:
         ]
         return TrendsResponse(zones=zones, provenance=self._provenance())
 
+    @staticmethod
+    def _eval_metric(row: dict) -> EvalMetric:
+        p_at = row.get("precision_at_k", {}) or {}
+        r_at = row.get("recall_at_k", {}) or {}
+        return EvalMetric(
+            model=str(row.get("model", "unknown")),
+            pr_auc=round(float(row.get("pr_auc", 0.0)), 4),
+            precision_at_25=round(float(p_at.get("25", 0.0)), 4),
+            recall_at_25=round(float(r_at.get("25", 0.0)), 4),
+            n_test_rows=int(row.get("n_test_rows", 0) or 0),
+        )
+
+    def evaluation_summary(self) -> EvaluationSummaryResponse:
+        report = self.repo.eval_report()
+        manifest = self.repo.manifest()
+        etl, model = manifest.get("etl", {}), manifest.get("model", {})
+        rolling = [self._eval_metric(r) for r in report.get("rolling_origin", [])]
+        held_out = [self._eval_metric(r) for r in report.get("held_out_zone", [])]
+        held_lgbm = next((m for m in held_out if m.model.startswith("lightgbm")), None)
+        baseline_best = max(
+            (m for m in held_out if not m.model.startswith("lightgbm")),
+            key=lambda m: m.pr_auc,
+            default=None,
+        )
+        findings = [
+            (
+                f"Full-city run: {int(etl.get('n_input_rows', 0)):,} input rows, "
+                f"{int(etl.get('n_in_scope_rows', 0)):,} in-scope rows, "
+                f"{int(etl.get('n_segments', 0)):,} physical segments."
+            ),
+            f"Current model winner: {report.get('winner', model.get('winner', 'unknown'))}.",
+        ]
+        if held_lgbm and baseline_best:
+            findings.append(
+                f"Held-out-zone gate: LightGBM PR-AUC {held_lgbm.pr_auc:.3f} vs "
+                f"best baseline {baseline_best.pr_auc:.3f}."
+            )
+        findings.append(
+            "Traffic-flow impact is still a prioritisation/simulation estimate because the organiser data has no speed or volume feed."
+        )
+        return EvaluationSummaryResponse(
+            model_version=str(report.get("model_version", model.get("model_version", "unknown"))),
+            winner=str(report.get("winner", model.get("winner", "unknown"))),
+            a_candidate_shipped=bool(report.get("a_candidate_shipped", model.get("lightgbm_ships", False))),
+            n_input_rows=int(etl.get("n_input_rows", 0) or 0),
+            n_in_scope_rows=int(etl.get("n_in_scope_rows", 0) or 0),
+            n_segments=int(etl.get("n_segments", 0) or 0),
+            road_network_version=str(etl.get("road_network_version", "unknown")),
+            rolling_origin=rolling,
+            held_out_zone=held_out,
+            feature_importance={k: round(float(v), 4) for k, v in (report.get("feature_importance", {}) or {}).items()},
+            key_findings=findings,
+            provenance=self._provenance(bool(model.get("lightgbm_ships") is False)),
+        )
+
     def deployment_plan(self, req: DeploymentPlanRequest) -> DeploymentPlanResponse:
         valid = self.repo.deployable_zones()
         if req.zone not in valid:
             raise UnknownZoneError(req.zone, valid)
         cand = self.repo.segments_in_zone(req.zone)
-        labels = {
-            r.physical_id: _label(r.name, r.junction, req.zone, r.physical_id)
+        stop_meta = {
+            r.physical_id: {
+                "label": _label(r.name, r.junction, req.zone, r.physical_id),
+                "lat": float(r.centroid_lat),
+                "lon": float(r.centroid_lon),
+            }
             for r in cand.itertuples()
         }
         stops = [
@@ -299,7 +360,15 @@ class MargadrishtiService:
             routes=[
                 RouteModel(
                     unit=r.unit,
-                    stops=[RouteStop(physical_id=p, label=labels.get(p, p)) for p in r.stops],
+                    stops=[
+                        RouteStop(
+                            physical_id=p,
+                            label=stop_meta.get(p, {}).get("label", p),
+                            centroid_lat=stop_meta.get(p, {}).get("lat"),
+                            centroid_lon=stop_meta.get(p, {}).get("lon"),
+                        )
+                        for p in r.stops
+                    ],
                     priority_utility=r.priority_utility, minutes=r.minutes,
                 )
                 for r in result.routes
@@ -320,7 +389,10 @@ class MargadrishtiService:
         """
         area_id, segs, interim = self._area_segments_for_deployment(req)
         candidates = sorted(segs, key=lambda s: s.priority_utility, reverse=True)[: req.limit]
-        labels = {s.physical_id: s.label for s in candidates}
+        stop_meta = {
+            s.physical_id: {"label": s.label, "lat": s.centroid_lat, "lon": s.centroid_lon}
+            for s in candidates
+        }
         stops = [
             Stop(
                 physical_id=s.physical_id,
@@ -345,7 +417,15 @@ class MargadrishtiService:
             routes=[
                 RouteModel(
                     unit=r.unit,
-                    stops=[RouteStop(physical_id=p, label=labels.get(p, p)) for p in r.stops],
+                    stops=[
+                        RouteStop(
+                            physical_id=p,
+                            label=stop_meta.get(p, {}).get("label", p),
+                            centroid_lat=stop_meta.get(p, {}).get("lat"),
+                            centroid_lon=stop_meta.get(p, {}).get("lon"),
+                        )
+                        for p in r.stops
+                    ],
                     priority_utility=r.priority_utility,
                     minutes=r.minutes,
                 )

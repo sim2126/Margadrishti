@@ -6,6 +6,7 @@ import type {
   CiiSurfaceResponse,
   CopilotResponse,
   DeploymentPlanResponse,
+  EvaluationSummaryResponse,
   ForecastResponse,
   LonLat,
   SegmentDetail,
@@ -113,6 +114,9 @@ export const useForecast = (zone?: string | null, limit = 25) =>
   });
 
 export const useTrends = () => useQuery({ queryKey: ["trends"], queryFn: () => get<TrendsResponse>("/analytics/trends") });
+
+export const useEvaluationSummary = () =>
+  useQuery({ queryKey: ["evaluation"], queryFn: () => get<EvaluationSummaryResponse>("/analytics/evaluation") });
 
 export const useZones = () => useQuery({ queryKey: ["zones"], queryFn: () => get<{ zones: string[] }>("/zones") });
 

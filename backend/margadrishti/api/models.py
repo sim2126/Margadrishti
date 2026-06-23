@@ -183,6 +183,8 @@ class AreaSummaryResponse(BaseModel):
 class RouteStop(BaseModel):
     physical_id: str
     label: str
+    centroid_lat: float | None = None
+    centroid_lon: float | None = None
 
 
 class RouteModel(BaseModel):
@@ -219,4 +221,31 @@ class DeploymentPlanResponse(BaseModel):
     solver: str
     method_caveats: str
     requires_human_approval: bool = True
+    provenance: Provenance
+
+
+class EvalMetric(BaseModel):
+    model: str
+    pr_auc: float
+    precision_at_25: float
+    recall_at_25: float
+    n_test_rows: int
+
+
+class EvaluationSummaryResponse(BaseModel):
+    model_version: str
+    winner: str
+    a_candidate_shipped: bool
+    n_input_rows: int
+    n_in_scope_rows: int
+    n_segments: int
+    road_network_version: str
+    rolling_origin: list[EvalMetric]
+    held_out_zone: list[EvalMetric]
+    feature_importance: dict[str, float]
+    key_findings: list[str]
+    caveats: str = (
+        "Evaluation ranks hotspot prediction quality. It does not prove measured "
+        "traffic-flow reduction; organiser data has no speed or volume feed."
+    )
     provenance: Provenance

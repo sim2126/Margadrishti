@@ -1,4 +1,4 @@
-import { MapPinned, MousePointer2, ShieldCheck } from "lucide-react";
+import { FileText, MapPinned, MousePointer2, ShieldCheck } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { useAreaDeploymentPlan, useAreaSummary, useDeploymentPlan, useZones } from "@/lib/api";
 import type { AreaDeploymentPlanResponse, DeploymentPlanResponse, RouteModel } from "@/lib/types";
@@ -15,6 +15,7 @@ export function DeploymentPanel() {
   const setAreaDrawing = useUi((s) => s.setAreaDrawing);
   const clearArea = useUi((s) => s.clearArea);
   const select = useUi((s) => s.select);
+  const setActivePlan = useUi((s) => s.setActivePlan);
   const { data: zonesData } = useZones();
   const zones = zonesData?.zones ?? [];
   const [mode, setMode] = useState<Mode>("zone");
@@ -31,6 +32,14 @@ export function DeploymentPanel() {
   useEffect(() => {
     if (areaReady) setMode("area");
   }, [areaReady]);
+
+  useEffect(() => {
+    if (plan.data) setActivePlan(plan.data);
+  }, [plan.data, setActivePlan]);
+
+  useEffect(() => {
+    if (areaPlan.data) setActivePlan(areaPlan.data);
+  }, [areaPlan.data, setActivePlan]);
 
   return (
     <div className="flex h-full flex-col gap-4 overflow-y-auto p-4">
@@ -188,6 +197,7 @@ function AreaSummaryCard({
 function PlanResult({ plan, title }: { plan: DeploymentPlanResponse | AreaDeploymentPlanResponse; title: string }) {
   const routes = plan.routes;
   const area = "area_caveats" in plan ? plan : null;
+  const totalStops = routes.reduce((n, r) => n + r.stops.length, 0);
   return (
     <div className="space-y-3">
       <div>
@@ -207,6 +217,44 @@ function PlanResult({ plan, title }: { plan: DeploymentPlanResponse | AreaDeploy
       {routes.map((r) => (
         <RouteCard key={r.unit} route={r} />
       ))}
+      <Button variant="outline" size="sm" onClick={() => window.print()} className="no-print w-full">
+        <FileText className="h-3.5 w-3.5" />
+        Print shift brief
+      </Button>
+      <div className="print-brief rounded-(--radius) border bg-(--color-surface-2)/30 p-4">
+        <div className="mb-3">
+          <div className="text-base font-semibold text-(--color-fg)">Margadrishti Shift Brief</div>
+          <div className="text-xs text-(--color-muted)">{title}</div>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <Mini label="Units" value={String(routes.length)} />
+          <Mini label="Stops" value={String(totalStops)} />
+          <Mini label="Coverage" value={`${(plan.coverage_fraction * 100).toFixed(0)}%`} />
+        </div>
+        <div className="mt-3 space-y-2">
+          {routes.map((r) => (
+            <div key={r.unit} className="rounded-(--radius) border p-2">
+              <div className="mb-1 text-xs font-medium text-(--color-fg)">
+                Unit {r.unit + 1} · {r.stops.length} stops · {Math.round(r.minutes)} min
+              </div>
+              <ol className="space-y-0.5 text-[11px] text-(--color-muted)">
+                {r.stops.slice(0, 10).map((st, i) => (
+                  <li key={st.physical_id}>
+                    {i + 1}. {st.label}
+                  </li>
+                ))}
+              </ol>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 text-[11px] leading-relaxed text-(--color-muted)">
+          Advisory only. Requires human approval before tasking. {plan.method_caveats}
+          {area ? ` ${area.area_caveats}` : ""}
+        </div>
+        <div className="mt-2 text-[10px] text-(--color-muted)">
+          as_of={plan.provenance.as_of} · model={plan.provenance.model_version}
+        </div>
+      </div>
       <div className="rounded-(--radius) border border-impact-2/40 bg-impact-2/10 p-2.5 text-[11px] text-impact-2">
         ⚠ {plan.method_caveats}
       </div>

@@ -226,6 +226,8 @@ def test_area_deployment_plan_keeps_area_separate_from_zone(client):
         assert route["minutes"] <= 180 + 1
         for stop in route["stops"]:
             assert "label" in stop
+            assert isinstance(stop["centroid_lat"], float)
+            assert isinstance(stop["centroid_lon"], float)
 
 
 def test_deployment_unknown_zone_is_422(client):
@@ -245,6 +247,28 @@ def test_deployment_valid_zone_plan(client):
         assert route["minutes"] <= 180 + 1
         for stop in route["stops"]:
             assert "label" in stop
+            assert isinstance(stop["centroid_lat"], float)
+            assert isinstance(stop["centroid_lon"], float)
+
+
+def test_evaluation_summary_contract(client):
+    r = client.get("/analytics/evaluation")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["model_version"] != "unknown"
+    assert body["winner"]
+    assert body["n_input_rows"] >= body["n_in_scope_rows"] > 0
+    assert body["n_segments"] > 0
+    assert body["rolling_origin"]
+    assert body["held_out_zone"]
+    assert any("Full-city run" in f for f in body["key_findings"])
+    assert "speed or volume" in body["caveats"]
+    held = {m["model"]: m for m in body["held_out_zone"]}
+    if "lightgbm@held_out_zone" in held:
+        baseline_best = max(
+            v["pr_auc"] for k, v in held.items() if not k.startswith("lightgbm")
+        )
+        assert held["lightgbm@held_out_zone"]["pr_auc"] >= baseline_best
 
 
 def test_segment_detail_404(client):

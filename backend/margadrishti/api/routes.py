@@ -18,6 +18,7 @@ from margadrishti.api.models import (
     CiiMapResponse,
     DeploymentPlanRequest,
     DeploymentPlanResponse,
+    EvaluationSummaryResponse,
     ForecastResponse,
     SegmentDetail,
     TimeSlicedCiiResponse,
@@ -68,6 +69,12 @@ def forecast(
 @router.get("/analytics/trends", response_model=TrendsResponse, tags=["analytics"])
 def trends(svc: MargadrishtiService = Depends(get_service)) -> TrendsResponse:
     return svc.zone_trends()
+
+
+@router.get("/analytics/evaluation", response_model=EvaluationSummaryResponse, tags=["analytics"])
+def evaluation(svc: MargadrishtiService = Depends(get_service)) -> EvaluationSummaryResponse:
+    """Model/evaluation proof card for the command dashboard."""
+    return svc.evaluation_summary()
 
 
 @router.get("/zones", tags=["deployment"])

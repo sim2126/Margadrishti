@@ -1,6 +1,6 @@
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import { H3HexagonLayer } from "@deck.gl/geo-layers";
-import { PathLayer, PolygonLayer, ScatterplotLayer } from "@deck.gl/layers";
+import { PathLayer, PolygonLayer, ScatterplotLayer, TextLayer } from "@deck.gl/layers";
 import { CheckCircle2, MousePointer2, Trash2, Undo2 } from "lucide-react";
 import { latLngToCell } from "h3-js";
 import { useMemo, useState } from "react";
@@ -24,6 +24,22 @@ interface Hex {
   intensity: number;
   top: SurfaceSegment;
   count: number;
+}
+
+const ROUTE_COLORS: Array<[number, number, number, number]> = [
+  [57, 189, 188, 245],
+  [255, 177, 59, 245],
+  [106, 169, 255, 245],
+  [248, 81, 73, 245],
+  [227, 179, 65, 245],
+];
+
+interface RoutePoint {
+  position: [number, number];
+  unit: number;
+  order: number;
+  physical_id: string;
+  label: string;
 }
 
 function segmentIntensity(s: SurfaceSegment): number {
@@ -66,6 +82,7 @@ export function CommandMap() {
   const selected = useUi((s) => s.selectedSegment);
   const select = useUi((s) => s.select);
   const sim = useUi((s) => s.sim);
+  const activePlan = useUi((s) => s.activePlan);
   const areaDrawing = useUi((s) => s.areaDrawing);
   const setAreaDrawing = useUi((s) => s.setAreaDrawing);
   const areaPolygon = useUi((s) => s.areaPolygon);
@@ -77,6 +94,33 @@ export function CommandMap() {
   const [hover, setHover] = useState<{ x: number; y: number; hex: Hex } | null>(null);
 
   const hexes = useMemo(() => aggregateToHex(data?.segments ?? []), [data]);
+  const routePoints = useMemo<RoutePoint[]>(
+    () =>
+      (activePlan?.routes ?? []).flatMap((route) =>
+        route.stops
+          .filter((s) => s.centroid_lat != null && s.centroid_lon != null)
+          .map((s, i) => ({
+            position: [s.centroid_lon!, s.centroid_lat!],
+            unit: route.unit,
+            order: i + 1,
+            physical_id: s.physical_id,
+            label: s.label,
+          })),
+      ),
+    [activePlan],
+  );
+  const routePaths = useMemo(
+    () =>
+      (activePlan?.routes ?? [])
+        .map((route) => ({
+          unit: route.unit,
+          path: route.stops
+            .filter((s) => s.centroid_lat != null && s.centroid_lon != null)
+            .map((s) => [s.centroid_lon!, s.centroid_lat!]),
+        }))
+        .filter((r) => r.path.length >= 2),
+    [activePlan],
+  );
   const simActive = !!sim;
   const areaReady = areaPolygon.length >= 3;
   const polygonCoords = areaPolygon.map((p) => [p.lon, p.lat]);
@@ -147,6 +191,45 @@ export function CommandMap() {
     },
   });
 
+  const routePathLayer = new PathLayer<{ unit: number; path: number[][] }>({
+    id: "deployment-route-paths",
+    data: routePaths,
+    pickable: false,
+    getPath: (d) => d.path as never,
+    getColor: (d) => ROUTE_COLORS[d.unit % ROUTE_COLORS.length],
+    widthUnits: "pixels",
+    getWidth: 3,
+  });
+
+  const routeStopLayer = new ScatterplotLayer<RoutePoint>({
+    id: "deployment-route-stops",
+    data: routePoints,
+    pickable: true,
+    stroked: true,
+    radiusUnits: "pixels",
+    lineWidthMinPixels: 2,
+    getPosition: (d) => d.position,
+    getRadius: 8,
+    getFillColor: (d) => ROUTE_COLORS[d.unit % ROUTE_COLORS.length],
+    getLineColor: [255, 255, 255, 240],
+    onClick: (info) => {
+      if (info.object) select((info.object as RoutePoint).physical_id);
+    },
+  });
+
+  const routeTextLayer = new TextLayer<RoutePoint>({
+    id: "deployment-route-labels",
+    data: routePoints,
+    pickable: false,
+    getPosition: (d) => d.position,
+    getText: (d) => String(d.order),
+    getColor: [6, 21, 21, 255],
+    getSize: 11,
+    getTextAnchor: "middle",
+    getAlignmentBaseline: "center",
+    fontWeight: "700",
+  });
+
   // Highlight layer for an active what-if simulation: target + affected downstream.
   const simPoints = sim
     ? [
@@ -174,7 +257,16 @@ export function CommandMap() {
     updateTriggers: { getRadius: sim?.evidence_id, getFillColor: sim?.evidence_id },
   });
 
-  const layers = [areaFillLayer, layer, ...(simActive ? [simLayer] : []), areaPathLayer, areaPointLayer];
+  const layers = [
+    areaFillLayer,
+    layer,
+    routePathLayer,
+    routeStopLayer,
+    routeTextLayer,
+    ...(simActive ? [simLayer] : []),
+    areaPathLayer,
+    areaPointLayer,
+  ];
 
   return (
     <div className="relative h-full w-full">
@@ -241,6 +333,13 @@ export function CommandMap() {
         <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-full border bg-(--color-surface)/90 px-3 py-1 text-xs text-(--color-fg)">
           What-if active · <span className="text-[#38bdf8]">●</span> blocked segment ·{" "}
           {sim!.affected.length} downstream affected
+        </div>
+      )}
+
+      {activePlan && routePoints.length > 0 && (
+        <div className="absolute left-1/2 top-14 -translate-x-1/2 rounded-full border bg-(--color-surface)/90 px-3 py-1 text-xs text-(--color-fg)">
+          Deployment overlay · {activePlan.routes.length} unit{activePlan.routes.length === 1 ? "" : "s"} ·{" "}
+          {routePoints.length} mapped stops
         </div>
       )}
 
