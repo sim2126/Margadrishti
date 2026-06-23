@@ -37,15 +37,20 @@ def test_mocked_claude_tool_loop(monkeypatch):
     Verifies the loop executes tools and returns the model's text."""
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
     monkeypatch.setenv("MARGA_COPILOT_LLM_ENABLED", "true")
+    monkeypatch.setenv("CLAUDE_MODEL_REASONING", "expensive-model")
+    monkeypatch.setenv("CLAUDE_MODEL_FAST", "cheap-model")
+    monkeypatch.setenv("CLAUDE_MODEL_PRICES_MTOK", "cheap-model:1,2;expensive-model:9,9")
     get_settings.cache_clear()
 
-    captured = {}
+    captured = {"models": []}
+    usage_logs = []
 
     def fake_execute(name, args, svc):
         captured["tool"] = name
         return {"provenance": {"as_of": "2024-04-08"}, "segments": []}
 
     monkeypatch.setattr(agent, "execute_tool", fake_execute)
+    monkeypatch.setattr(agent.log, "info", lambda event, **kw: usage_logs.append((event, kw)))
 
     def block(**kw):
         return types.SimpleNamespace(**kw)
@@ -56,13 +61,16 @@ def test_mocked_claude_tool_loop(monkeypatch):
 
         def create(self, **kw):
             self.calls += 1
+            captured["models"].append(kw["model"])
             if self.calls == 1:
                 return types.SimpleNamespace(
                     stop_reason="tool_use",
+                    usage=types.SimpleNamespace(input_tokens=100, output_tokens=20),
                     content=[block(type="tool_use", name="get_segment_cii", input={}, id="t1")],
                 )
             return types.SimpleNamespace(
                 stop_reason="end_turn",
+                usage=types.SimpleNamespace(input_tokens=200, output_tokens=30),
                 content=[block(type="text", text="Top segment is A Rd. as_of=2024-04-08.")],
             )
 
@@ -77,8 +85,21 @@ def test_mocked_claude_tool_loop(monkeypatch):
     ans = agent.ask("Where are the worst spots?", svc=object())
     assert "A Rd" in ans.answer
     assert captured["tool"] == "get_segment_cii"
+    assert captured["models"] == ["cheap-model", "cheap-model"]
+    assert ans.model == "cheap-model"
     assert "get_segment_cii" in ans.tool_calls
     assert ans.provenance and ans.provenance[0]["as_of"] == "2024-04-08"
+    assert usage_logs == [
+        (
+            "copilot_usage",
+            {
+                "model": "cheap-model",
+                "input_tokens": 300,
+                "output_tokens": 50,
+                "est_cost_usd": 0.0004,
+            },
+        )
+    ]
 
 
 def test_api_key_never_enters_model_context_or_response(monkeypatch):

@@ -23,6 +23,7 @@ x-backend: &backend
     ANTHROPIC_API_KEY: "${ANTHROPIC_API_KEY:-}"
     CLAUDE_MODEL_REASONING: "${CLAUDE_MODEL_REASONING:-claude-opus-4-8}"
     CLAUDE_MODEL_FAST: "${CLAUDE_MODEL_FAST:-claude-sonnet-4-6}"
+    CLAUDE_MODEL_PRICES_MTOK: "${CLAUDE_MODEL_PRICES_MTOK:-claude-haiku-4-5:1,5;claude-sonnet-4-6:3,15;claude-opus-4-8:15,75}"
     MARGA_PII_SALT: "${MARGA_PII_SALT:?MARGA_PII_SALT is required}"
     MARGA_CORS_ORIGINS: "${MARGA_CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}"
   depends_on:

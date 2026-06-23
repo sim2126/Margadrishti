@@ -55,6 +55,28 @@ SYSTEM = (
 MAX_TURNS = 5
 
 
+def _to_param_blocks(content) -> list[dict]:
+    """Echo assistant content back as plain dicts, not the SDK's own pydantic block models.
+    Re-sending the raw models makes the SDK re-serialise them via model_dump(by_alias=None),
+    which trips an anthropic/pydantic version incompatibility on the tool-loop follow-up.
+    text + tool_use are the only block types this bounded (no-thinking) loop produces."""
+    blocks: list[dict] = []
+    for b in content:
+        if b.type == "text":
+            blocks.append({"type": "text", "text": b.text})
+        elif b.type == "tool_use":
+            blocks.append({"type": "tool_use", "id": b.id, "name": b.name, "input": b.input})
+    return blocks
+
+
+def _log_cost(model: str, in_tok: int, out_tok: int, settings) -> None:
+    """Emit a structured cost record per live answer so spend is auditable from logs."""
+    r_in, r_out = settings.claude_price_for_model(model)
+    est = in_tok / 1e6 * r_in + out_tok / 1e6 * r_out
+    log.info("copilot_usage", model=model, input_tokens=in_tok, output_tokens=out_tok,
+             est_cost_usd=round(est, 6))
+
+
 @dataclass
 class CopilotAnswer:
     answer: str
@@ -84,18 +106,26 @@ def _claude_loop(question: str, svc: MargadrishtiService, settings) -> CopilotAn
     import anthropic
 
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
-    model = settings.claude_model_reasoning
+    # The copilot is a high-volume bounded tool-use feature, so use the cost-sensitive
+    # model by default. Heavy one-off briefings can use claude_model_reasoning elsewhere.
+    model = settings.claude_model_fast
     messages: list[dict] = [{"role": "user", "content": question}]
     used, prov = [], []
+    in_tok = out_tok = 0
     try:
         for _ in range(MAX_TURNS):
             resp = client.messages.create(
                 model=model, max_tokens=1024, system=SYSTEM, tools=TOOL_SPECS, messages=messages
             )
+            u = getattr(resp, "usage", None)
+            if u is not None:
+                in_tok += getattr(u, "input_tokens", 0) or 0
+                out_tok += getattr(u, "output_tokens", 0) or 0
             if resp.stop_reason != "tool_use":
                 text = "".join(b.text for b in resp.content if b.type == "text")
+                _log_cost(model, in_tok, out_tok, settings)
                 return CopilotAnswer(answer=text, tool_calls=used, model=model, provenance=prov)
-            messages.append({"role": "assistant", "content": resp.content})
+            messages.append({"role": "assistant", "content": _to_param_blocks(resp.content)})
             results = []
             for block in resp.content:
                 if block.type == "tool_use":
@@ -120,8 +150,10 @@ def _claude_loop(question: str, svc: MargadrishtiService, settings) -> CopilotAn
         # Live path failed (rate limit, billing, network, SDK). Degrade to the deterministic
         # answer; never surface SDK internals to the client, never 500. Log the type only.
         log.warning("copilot_live_failed", error=type(e).__name__, status=getattr(e, "status_code", None))
+        _log_cost(model, in_tok, out_tok, settings)
         return _offline_fallback(question, svc)
     # Turns exhausted without a final text answer — fall back rather than return a stub.
+    _log_cost(model, in_tok, out_tok, settings)
     return _offline_fallback(question, svc)
 
 

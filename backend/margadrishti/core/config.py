@@ -22,6 +22,16 @@ class Settings(BaseSettings):
     anthropic_api_key: str = Field(default="", alias="ANTHROPIC_API_KEY")
     claude_model_reasoning: str = Field(default="claude-opus-4-8", alias="CLAUDE_MODEL_REASONING")
     claude_model_fast: str = Field(default="claude-sonnet-4-6", alias="CLAUDE_MODEL_FAST")
+    # USD per 1M tokens for known Anthropic model choices. Model IDs and pricing defaults
+    # live here (the one allowed config location), not in copilot business logic.
+    claude_model_prices_mtok: str = Field(
+        default=(
+            "claude-haiku-4-5:1,5;"
+            "claude-sonnet-4-6:3,15;"
+            "claude-opus-4-8:15,75"
+        ),
+        alias="CLAUDE_MODEL_PRICES_MTOK",
+    )
     # The copilot endpoint is currently unauthenticated. Default OFF so it cannot spend
     # the API key from the open internet; enable only behind auth + rate limiting.
     copilot_llm_enabled: bool = Field(default=False, alias="MARGA_COPILOT_LLM_ENABLED")
@@ -100,6 +110,29 @@ class Settings(BaseSettings):
     @property
     def cors_allow_origins(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
+
+    def claude_price_for_model(self, model: str) -> tuple[float, float]:
+        """Return (input, output) USD per 1M tokens for cost logging.
+
+        Unknown model ids fall back to the configured fast model rate; this keeps
+        cost logs conservative for the live copilot path without hard-coding model
+        ids outside configuration.
+        """
+        parsed: dict[str, tuple[float, float]] = {}
+        for item in self.claude_model_prices_mtok.split(";"):
+            if not item.strip() or ":" not in item:
+                continue
+            name, rates = item.split(":", 1)
+            if "," not in rates:
+                continue
+            in_rate, out_rate = rates.split(",", 1)
+            try:
+                parsed[name.strip()] = (float(in_rate), float(out_rate))
+            except ValueError:
+                continue
+        if model in parsed:
+            return parsed[model]
+        return parsed.get(self.claude_model_fast, (3.0, 15.0))
 
 
 @lru_cache

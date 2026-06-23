@@ -137,8 +137,10 @@ def test_hourly_cii_rejects_out_of_range_hour(client):
     assert client.get("/segments/cii/hourly?day_of_week=7").status_code == 422
 
 
-def test_area_summary_polygon_over_bbox_contains_all(client):
-    # a rectangle around the Koramangala bbox should contain every served segment
+def test_area_summary_polygon_over_bbox_returns_subset(client):
+    # A rectangle around Koramangala should contain a non-empty subset. On bounded
+    # demo gold it may contain everything; on full-city gold it must not be assumed
+    # to cover the whole serving surface.
     all_ct = len(client.get("/segments/cii?limit=20000").json()["segments"])
     body = client.post(
         "/area/summary",
@@ -155,7 +157,7 @@ def test_area_summary_polygon_over_bbox_contains_all(client):
     assert body.status_code == 200
     b = body.json()
     assert b["method"] == "centroid_in_polygon"
-    assert b["n_segments"] == all_ct
+    assert 0 < b["n_segments"] <= all_ct
     assert b["area_id"].startswith("area-")
     assert 0.0 <= b["mean_cii"] <= b["max_cii"]
     assert len(b["zones"]) >= 1
