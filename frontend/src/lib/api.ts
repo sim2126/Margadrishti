@@ -1,11 +1,17 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  AreaDeploymentPlanResponse,
+  AreaSummaryResponse,
   CiiMapResponse,
+  CiiSurfaceResponse,
   CopilotResponse,
   DeploymentPlanResponse,
   ForecastResponse,
+  LonLat,
   SegmentDetail,
   SimulationResult,
+  SurfaceSegment,
+  TimeSlicedCiiResponse,
   TrafficContext,
   TrendsResponse,
 } from "./types";
@@ -38,6 +44,61 @@ export const useCii = (zone?: string | null, limit = 2000) =>
     queryFn: () => get<CiiMapResponse>(`/segments/cii?limit=${limit}${zone ? `&zone=${encodeURIComponent(zone)}` : ""}`),
   });
 
+function toSurfaceSegment(s: CiiMapResponse["segments"][number]): SurfaceSegment {
+  return {
+    ...s,
+    window_observed_count: s.observed_count,
+    hour_intensity: s.cii,
+  };
+}
+
+function toHourlySurfaceSegment(s: TimeSlicedCiiResponse["segments"][number]): SurfaceSegment {
+  return {
+    ...s,
+    highway: null,
+    approval_rate: null,
+    observed_count: s.window_observed_count,
+    component_risk: 0,
+    component_centrality: 0,
+    component_obstruction: 0,
+  };
+}
+
+export const useCiiSurface = (
+  zone?: string | null,
+  mode: "all_day" | "hourly" = "all_day",
+  hour: number | null = null,
+  limit = 2000,
+) =>
+  useQuery({
+    queryKey: ["cii-surface", zone ?? "all", mode, hour ?? "all", limit],
+    queryFn: async (): Promise<CiiSurfaceResponse> => {
+      if (mode === "hourly" && hour != null) {
+        const path = `/segments/cii/hourly?hour=${hour}&limit=${limit}${zone ? `&zone=${encodeURIComponent(zone)}` : ""}`;
+        const r = await get<TimeSlicedCiiResponse>(path);
+        return {
+          mode: "hourly",
+          hour: r.hour,
+          temporal_basis: r.temporal_basis,
+          is_observed_not_prevalence: r.is_observed_not_prevalence,
+          note: r.note,
+          segments: r.segments.map(toHourlySurfaceSegment),
+          provenance: r.provenance,
+        };
+      }
+      const r = await get<CiiMapResponse>(`/segments/cii?limit=${limit}${zone ? `&zone=${encodeURIComponent(zone)}` : ""}`);
+      return {
+        mode: "all_day",
+        hour: null,
+        temporal_basis: "all_day_cii",
+        is_observed_not_prevalence: true,
+        note: r.provenance.note ?? "CII is a prioritisation proxy, not measured congestion.",
+        segments: r.segments.map(toSurfaceSegment),
+        provenance: r.provenance,
+      };
+    },
+  });
+
 export const useSegment = (physicalId: string | null) =>
   useQuery({
     enabled: !!physicalId,
@@ -59,6 +120,22 @@ export const useDeploymentPlan = () =>
   useMutation({
     mutationFn: (body: { zone: string; n_units: number; shift_minutes?: number }) =>
       post<DeploymentPlanResponse>("/deployment/plan", body),
+  });
+
+const polygonKey = (polygon: LonLat[]) =>
+  polygon.map((p) => `${p.lon.toFixed(6)},${p.lat.toFixed(6)}`).join("|");
+
+export const useAreaSummary = (polygon: LonLat[], limit = 8) =>
+  useQuery({
+    enabled: polygon.length >= 3,
+    queryKey: ["area-summary", polygonKey(polygon), limit],
+    queryFn: () => post<AreaSummaryResponse>("/area/summary", { polygon, limit }),
+  });
+
+export const useAreaDeploymentPlan = () =>
+  useMutation({
+    mutationFn: (body: { polygon: LonLat[]; limit?: number; n_units: number; shift_minutes?: number }) =>
+      post<AreaDeploymentPlanResponse>("/area/deployment/plan", body),
   });
 
 export const useCopilot = () =>

@@ -36,6 +36,44 @@ export interface CiiMapResponse {
   provenance: Provenance;
 }
 
+export interface TimeSlicedSegment {
+  physical_id: string;
+  name: string | null;
+  label: string;
+  junction: string | null;
+  zone: string | null;
+  cii: number;
+  window_observed_count: number;
+  hour_intensity: number;
+  centroid_lat: number;
+  centroid_lon: number;
+}
+
+export interface TimeSlicedCiiResponse {
+  hour: number | null;
+  day_of_week: number | null;
+  temporal_basis: string;
+  is_observed_not_prevalence: boolean;
+  note: string;
+  segments: TimeSlicedSegment[];
+  provenance: Provenance;
+}
+
+export interface SurfaceSegment extends CiiSegment {
+  window_observed_count?: number;
+  hour_intensity?: number;
+}
+
+export interface CiiSurfaceResponse {
+  mode: "all_day" | "hourly";
+  hour: number | null;
+  temporal_basis: string;
+  is_observed_not_prevalence: boolean;
+  note: string;
+  segments: SurfaceSegment[];
+  provenance: Provenance;
+}
+
 export interface SegmentDetail {
   physical_id: string;
   name: string | null;
@@ -98,6 +136,54 @@ export interface DeploymentPlanResponse {
   coverage_fraction: number;
   solver: string;
   method_caveats: string;
+  requires_human_approval: boolean;
+  provenance: Provenance;
+}
+
+export interface LonLat {
+  lon: number;
+  lat: number;
+}
+
+export interface AreaSegment {
+  physical_id: string;
+  name: string | null;
+  label: string;
+  junction: string | null;
+  zone: string | null;
+  cii: number;
+  observed_count: number;
+  predicted_risk: number | null;
+  priority_utility: number;
+  centroid_lat: number;
+  centroid_lon: number;
+}
+
+export interface AreaSummaryResponse {
+  area_id: string;
+  method: "centroid_in_polygon";
+  n_segments: number;
+  observed_count: number;
+  mean_cii: number;
+  max_cii: number;
+  zones: string[];
+  top_segments: AreaSegment[];
+  caveats: string;
+  provenance: Provenance;
+}
+
+export interface AreaDeploymentPlanResponse {
+  area_id: string;
+  method: "centroid_in_polygon";
+  n_segments: number;
+  n_candidate_segments: number;
+  zones: string[];
+  routes: RouteModel[];
+  total_priority_utility: number;
+  coverage_fraction: number;
+  solver: string;
+  method_caveats: string;
+  area_caveats: string;
   requires_human_approval: boolean;
   provenance: Provenance;
 }

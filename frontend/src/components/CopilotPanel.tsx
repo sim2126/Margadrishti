@@ -1,11 +1,12 @@
 import { Loader2, Send, Sparkles } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useCopilot } from "@/lib/api";
+import { useUi } from "@/store/ui";
 import { Button, StatLabel } from "./ui";
 
-const SUGGESTIONS = [
+const BASE_SUGGESTIONS = [
   "Top congestion-impact spots right now",
-  "Where should I deploy 3 units in Madiwala?",
+  "Where should I deploy 3 units for the next shift?",
   "Observed enforcement density by zone",
 ];
 
@@ -33,8 +34,30 @@ function ThinkingIndicator() {
 
 export function CopilotPanel() {
   const [q, setQ] = useState("");
+  const selected = useUi((s) => s.selectedSegment);
+  const zone = useUi((s) => s.zone);
+  const hour = useUi((s) => s.hour);
+  const timeMode = useUi((s) => s.timeMode);
+  const areaPoints = useUi((s) => s.areaPolygon.length);
   const copilot = useCopilot();
   const ask = (text: string) => text.trim() && copilot.mutate({ question: text });
+
+  const suggestions = useMemo(() => {
+    const items: string[] = [];
+    if (selected) {
+      items.push(`For segment ${selected}, explain the enforcement risk and adjacent spillover concern.`);
+      items.push(`Simulate a 45 minute one-lane illegal-parking blockage on segment ${selected}.`);
+      items.push(`Show the hour-of-week enforcement pattern for segment ${selected}.`);
+    }
+    if (zone) items.push(`For ${zone}, recommend an advisory deployment plan for 3 units.`);
+    if (timeMode === "hourly") {
+      items.push(`At ${String(hour).padStart(2, "0")}:00 IST, which hotspots should a commander check first?`);
+    }
+    if (areaPoints >= 3) {
+      items.push("I have drawn an operational area; what should I verify before approving its area deployment plan?");
+    }
+    return [...items, ...BASE_SUGGESTIONS].slice(0, 6);
+  }, [areaPoints, hour, selected, timeMode, zone]);
 
   return (
     <div className="flex h-full flex-col p-4">
@@ -46,6 +69,14 @@ export function CopilotPanel() {
         Answers from your data only — never invents numbers. Plans are advisory.
       </p>
 
+      {(selected || zone || areaPoints >= 3) && (
+        <div className="mt-3 rounded-(--radius) border bg-(--color-surface-2)/30 p-2 text-[11px] text-(--color-muted)">
+          Context: {selected ? `segment ${selected}` : "no segment selected"}
+          {zone ? ` · ${zone}` : ""}
+          {areaPoints >= 3 ? ` · drawn area (${areaPoints} points)` : ""}
+        </div>
+      )}
+
       <div className="my-3 flex-1 overflow-y-auto rounded-(--radius) border bg-(--color-surface-2)/30 p-3">
         {copilot.isPending && <ThinkingIndicator />}
         {copilot.isError && <p className="text-sm text-impact-4">Copilot unavailable.</p>}
@@ -56,7 +87,7 @@ export function CopilotPanel() {
                 {copilot.data.notice}
               </p>
             )}
-            <p className="text-sm leading-relaxed text-(--color-fg)">{copilot.data.answer}</p>
+            <p className="whitespace-pre-line text-sm leading-relaxed text-(--color-fg)">{copilot.data.answer}</p>
             <div className="flex flex-wrap gap-1.5 pt-1">
               {copilot.data.tool_calls.map((t, i) => (
                 <span key={i} className="rounded-full border px-2 py-0.5 text-[10px] text-(--color-muted)">
@@ -71,7 +102,7 @@ export function CopilotPanel() {
         ) : (
           !copilot.isPending && (
             <div className="space-y-1.5">
-              {SUGGESTIONS.map((s) => (
+              {suggestions.map((s) => (
                 <button
                   key={s}
                   onClick={() => {

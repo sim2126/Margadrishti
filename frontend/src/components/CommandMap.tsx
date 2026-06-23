@@ -1,17 +1,18 @@
 import { MapboxOverlay } from "@deck.gl/mapbox";
 import { H3HexagonLayer } from "@deck.gl/geo-layers";
-import { ScatterplotLayer } from "@deck.gl/layers";
+import { PathLayer, PolygonLayer, ScatterplotLayer } from "@deck.gl/layers";
+import { CheckCircle2, MousePointer2, Trash2, Undo2 } from "lucide-react";
 import { latLngToCell } from "h3-js";
 import { useMemo, useState } from "react";
 import { Map as MapGL, useControl } from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
-import { useCii } from "@/lib/api";
-import type { CiiSegment } from "@/lib/types";
-import { ciiColor } from "@/lib/utils";
+import { useCiiSurface } from "@/lib/api";
+import type { SurfaceSegment } from "@/lib/types";
+import { cn, ciiColor } from "@/lib/utils";
 import { useTheme } from "@/store/theme";
 import { useUi } from "@/store/ui";
 
-// Keyless CARTO basemaps — dark-matter for the dark theme, positron for light.
+// Keyless CARTO basemaps: dark-matter for the dark theme, positron for light.
 const BASEMAP_DARK = "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json";
 const BASEMAP_LIGHT = "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json";
 const H3_RES = 9; // ~170m cells: readable city-scale heatmap
@@ -20,19 +21,30 @@ const INITIAL = { longitude: 77.625, latitude: 12.932, zoom: 12.4, pitch: 48, be
 interface Hex {
   hex: string;
   cii: number;
-  top: CiiSegment;
+  intensity: number;
+  top: SurfaceSegment;
   count: number;
 }
 
-function aggregateToHex(segments: CiiSegment[]): Hex[] {
+function segmentIntensity(s: SurfaceSegment): number {
+  return Math.max(0, Math.min(1, s.hour_intensity ?? s.cii));
+}
+
+function segmentObserved(s: SurfaceSegment): number {
+  return s.window_observed_count ?? s.observed_count;
+}
+
+function aggregateToHex(segments: SurfaceSegment[]): Hex[] {
   const byHex = new Map<string, Hex>();
   for (const s of segments) {
     const hex = latLngToCell(s.centroid_lat, s.centroid_lon, H3_RES);
+    const intensity = segmentIntensity(s);
     const cur = byHex.get(hex);
-    if (!cur) byHex.set(hex, { hex, cii: s.cii, top: s, count: s.observed_count });
+    if (!cur) byHex.set(hex, { hex, cii: s.cii, intensity, top: s, count: segmentObserved(s) });
     else {
-      cur.count += s.observed_count;
-      if (s.cii > cur.cii) {
+      cur.count += segmentObserved(s);
+      cur.intensity = Math.max(cur.intensity, intensity);
+      if (intensity > segmentIntensity(cur.top) || (intensity === segmentIntensity(cur.top) && s.cii > cur.cii)) {
         cur.cii = s.cii;
         cur.top = s;
       }
@@ -49,15 +61,59 @@ function DeckOverlay(props: { layers: unknown[]; interleaved?: boolean }) {
 
 export function CommandMap() {
   const zone = useUi((s) => s.zone);
+  const timeMode = useUi((s) => s.timeMode);
+  const hour = useUi((s) => s.hour);
   const selected = useUi((s) => s.selectedSegment);
   const select = useUi((s) => s.select);
   const sim = useUi((s) => s.sim);
+  const areaDrawing = useUi((s) => s.areaDrawing);
+  const setAreaDrawing = useUi((s) => s.setAreaDrawing);
+  const areaPolygon = useUi((s) => s.areaPolygon);
+  const addAreaPoint = useUi((s) => s.addAreaPoint);
+  const undoAreaPoint = useUi((s) => s.undoAreaPoint);
+  const clearArea = useUi((s) => s.clearArea);
   const theme = useTheme((s) => s.theme);
-  const { data, isLoading, isError } = useCii(zone);
+  const { data, isLoading, isError } = useCiiSurface(zone, timeMode, hour);
   const [hover, setHover] = useState<{ x: number; y: number; hex: Hex } | null>(null);
 
   const hexes = useMemo(() => aggregateToHex(data?.segments ?? []), [data]);
   const simActive = !!sim;
+  const areaReady = areaPolygon.length >= 3;
+  const polygonCoords = areaPolygon.map((p) => [p.lon, p.lat]);
+  const pathCoords = areaReady ? [...polygonCoords, polygonCoords[0]] : polygonCoords;
+
+  const areaFillLayer = new PolygonLayer<{ polygon: number[][] }>({
+    id: "area-fill",
+    data: areaReady ? [{ polygon: polygonCoords }] : [],
+    pickable: false,
+    getPolygon: (d) => d.polygon,
+    getFillColor: [20, 184, 166, 34],
+    getLineColor: [20, 184, 166, 210],
+    lineWidthMinPixels: 2,
+  });
+
+  const areaPathLayer = new PathLayer<{ path: number[][] }>({
+    id: "area-path",
+    data: pathCoords.length >= 2 ? [{ path: pathCoords }] : [],
+    pickable: false,
+    getPath: (d) => d.path as never,
+    getColor: [20, 184, 166, 240],
+    widthUnits: "pixels",
+    getWidth: 3,
+  });
+
+  const areaPointLayer = new ScatterplotLayer<{ position: number[]; index: number }>({
+    id: "area-points",
+    data: areaPolygon.map((p, index) => ({ position: [p.lon, p.lat], index })),
+    pickable: false,
+    radiusUnits: "pixels",
+    getPosition: (d) => d.position as [number, number],
+    getRadius: 5,
+    getFillColor: [20, 184, 166, 255],
+    getLineColor: [255, 255, 255, 230],
+    stroked: true,
+    lineWidthMinPixels: 1.5,
+  });
 
   const layer = new H3HexagonLayer({
     id: "cii-h3",
@@ -66,21 +122,29 @@ export function CommandMap() {
     extruded: true,
     elevationScale: 18,
     getHexagon: (d: Hex) => d.hex,
-    getElevation: (d: Hex) => d.cii * 100,
+    getElevation: (d: Hex) => Math.max(0.08, data?.mode === "hourly" ? d.intensity : d.cii) * 100,
     getFillColor: (d: Hex) => {
       const [r, g, b] = ciiColor(d.cii);
       const sel = d.top.physical_id === selected;
-      const a = simActive ? 60 : sel ? 255 : 165; // dim base when a what-if is active
+      const temporalAlpha = data?.mode === "hourly" ? 55 + Math.round(d.intensity * 200) : 165;
+      const a = simActive ? 60 : sel ? 255 : temporalAlpha;
       return [r, g, b, a] as [number, number, number, number];
     },
     getLineColor: (d: Hex) =>
       (d.top.physical_id === selected ? [255, 255, 255, 255] : [0, 0, 0, 0]) as [number, number, number, number],
     lineWidthMinPixels: 2,
     stroked: true,
-    onClick: (info) => info.object && select((info.object as Hex).top.physical_id),
+    onClick: (info) => {
+      if (areaDrawing) return;
+      if (info.object) select((info.object as Hex).top.physical_id);
+    },
     onHover: (info) =>
       setHover(info.object ? { x: info.x, y: info.y, hex: info.object as Hex } : null),
-    updateTriggers: { getFillColor: [selected, simActive], getLineColor: selected },
+    updateTriggers: {
+      getElevation: [data?.mode, hour],
+      getFillColor: [selected, simActive, data?.mode, hour],
+      getLineColor: selected,
+    },
   });
 
   // Highlight layer for an active what-if simulation: target + affected downstream.
@@ -110,18 +174,67 @@ export function CommandMap() {
     updateTriggers: { getRadius: sim?.evidence_id, getFillColor: sim?.evidence_id },
   });
 
+  const layers = [areaFillLayer, layer, ...(simActive ? [simLayer] : []), areaPathLayer, areaPointLayer];
+
   return (
     <div className="relative h-full w-full">
       <MapGL
         initialViewState={INITIAL}
         mapStyle={theme === "light" ? BASEMAP_LIGHT : BASEMAP_DARK}
         attributionControl={false}
+        onClick={(event) => {
+          if (!areaDrawing) return;
+          addAreaPoint({ lon: event.lngLat.lng, lat: event.lngLat.lat });
+        }}
       >
-        <DeckOverlay layers={simActive ? [layer, simLayer] : [layer]} interleaved />
+        <DeckOverlay layers={layers} interleaved />
       </MapGL>
 
+      <div className="absolute left-4 top-4 w-[270px] rounded-(--radius) border bg-(--color-surface)/92 p-3 shadow-lg backdrop-blur">
+        <div className="mb-2 flex items-start justify-between gap-2">
+          <div>
+            <div className="text-xs font-medium text-(--color-fg)">Area select</div>
+            <div className="text-[11px] text-(--color-muted)">
+              {areaDrawing ? "Click the map to add polygon points." : areaReady ? "Area ready for summary and deployment." : "Draw a market, metro, or event corridor."}
+            </div>
+          </div>
+          {areaReady && <CheckCircle2 className="mt-0.5 h-4 w-4 text-(--color-brand)" />}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <button
+            onClick={() => setAreaDrawing(!areaDrawing)}
+            className={cn(
+              "inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px]",
+              areaDrawing ? "border-(--color-brand) text-(--color-brand)" : "text-(--color-muted) hover:text-(--color-fg)",
+            )}
+          >
+            <MousePointer2 className="h-3 w-3" />
+            {areaDrawing ? "Drawing on" : "Draw area"}
+          </button>
+          <button
+            onClick={undoAreaPoint}
+            disabled={!areaPolygon.length}
+            className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] text-(--color-muted) disabled:opacity-40"
+          >
+            <Undo2 className="h-3 w-3" />
+            Undo
+          </button>
+          <button
+            onClick={clearArea}
+            disabled={!areaPolygon.length}
+            className="inline-flex items-center gap-1 rounded-full border px-2 py-1 text-[11px] text-(--color-muted) disabled:opacity-40"
+          >
+            <Trash2 className="h-3 w-3" />
+            Clear
+          </button>
+        </div>
+        <div className="mt-2 text-[11px] text-(--color-muted)">
+          {areaPolygon.length} point{areaPolygon.length === 1 ? "" : "s"} {areaReady ? "· summary available in Deploy" : "· need 3+"}
+        </div>
+      </div>
+
       <div className="pointer-events-none absolute right-4 top-4 rounded-full border bg-(--color-surface)/90 px-2.5 py-1 text-[11px] text-(--color-muted) backdrop-blur">
-        3D impact
+        {data?.mode === "hourly" ? `Hourly observed · ${String(data.hour ?? hour).padStart(2, "0")}:00` : "All-day CII"} · 3D impact
       </div>
 
       {simActive && (
@@ -133,7 +246,7 @@ export function CommandMap() {
 
       {isLoading && (
         <div className="absolute left-1/2 top-4 -translate-x-1/2 rounded-full border bg-(--color-surface)/90 px-3 py-1 text-xs text-(--color-muted)">
-          Loading CII surface…
+          Loading operational surface…
         </div>
       )}
       {!isLoading && isError && (
@@ -148,7 +261,7 @@ export function CommandMap() {
       )}
       {hover && (
         <div
-          className="pointer-events-none absolute z-10 max-w-[240px] rounded-(--radius) border bg-(--color-surface)/95 px-3 py-2 text-xs shadow-lg"
+          className="pointer-events-none absolute z-10 max-w-[260px] rounded-(--radius) border bg-(--color-surface)/95 px-3 py-2 text-xs shadow-lg"
           style={{ left: hover.x + 12, top: hover.y + 12 }}
         >
           <div className="font-medium text-(--color-fg)">{hover.hex.top.label}</div>
@@ -156,14 +269,19 @@ export function CommandMap() {
             CII <span className="text-(--color-fg)">{hover.hex.cii.toFixed(3)}</span> · observed{" "}
             <span className="text-(--color-fg)">{hover.hex.count}</span>
           </div>
+          {data?.mode === "hourly" && (
+            <div className="mt-0.5 text-(--color-muted)">
+              Hour intensity <span className="text-(--color-fg)">{Math.round(hover.hex.intensity * 100)}%</span>
+            </div>
+          )}
         </div>
       )}
-      <Legend />
+      <Legend hourly={data?.mode === "hourly"} />
     </div>
   );
 }
 
-function Legend() {
+function Legend({ hourly }: { hourly?: boolean }) {
   const stops = [0.1, 0.4, 0.65, 0.85, 1];
   return (
     <div className="absolute bottom-4 left-4 rounded-(--radius) border bg-(--color-surface)/90 px-3 py-2 backdrop-blur">
@@ -180,6 +298,7 @@ function Legend() {
         <span>Low</span>
         <span>Critical</span>
       </div>
+      {hourly && <div className="mt-1.5 text-[10px] text-(--color-muted)">Height/opacity follows observed timing.</div>}
     </div>
   );
 }
