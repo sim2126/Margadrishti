@@ -459,7 +459,7 @@ class MargadrishtiService:
             "segment_id": segment_id,
             "found": True,
             "hops": hops,
-            "neighbors": [{"physical_id": p, "name": names.get(p), "hop": h} for p, h in nbrs],
+            "neighbors": [{"physical_id": p, "name": _text(names.get(p)), "hop": h} for p, h in nbrs],
             "provenance": self._provenance().model_dump(),
         }
 

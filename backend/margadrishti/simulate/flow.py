@@ -41,6 +41,14 @@ def _optfloat(v) -> float | None:
     return None if f != f else f  # drop NaN
 
 
+def _opttext(v) -> str | None:
+    """Coerce a possibly-NaN cell to str | None. Full-city OSM road names can be float NaN,
+    which strict pydantic rejects for a str field (string_type error)."""
+    if v is None or (isinstance(v, float) and v != v):
+        return None
+    return str(v)
+
+
 def _nodes(physical_id: str) -> tuple[str, str]:
     parts = physical_id.split("_")
     return (parts[0], parts[1]) if len(parts) >= 2 else (physical_id, physical_id)
@@ -154,7 +162,7 @@ def simulate_parking_blockage(
         if impact >= impact_threshold:
             affected.append(
                 AffectedSegment(
-                    physical_id=pid, name=nb.get("name"), junction=nb.get("junction"),
+                    physical_id=pid, name=_opttext(nb.get("name")), junction=_opttext(nb.get("junction")),
                     hop=hop, impact=round(impact, 4),
                     centroid_lat=_optfloat(nb.get("centroid_lat")),
                     centroid_lon=_optfloat(nb.get("centroid_lon")),
@@ -169,7 +177,7 @@ def simulate_parking_blockage(
     return SimulationResult(
         evidence_id=f"sim-{uuid.uuid4().hex[:8]}",
         target_segment=segment_id,
-        target_name=seg.get("name"),
+        target_name=_opttext(seg.get("name")),
         target_lat=_optfloat(seg.get("centroid_lat")),
         target_lon=_optfloat(seg.get("centroid_lon")),
         lanes=lanes,

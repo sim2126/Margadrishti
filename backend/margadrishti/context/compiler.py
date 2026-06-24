@@ -90,6 +90,11 @@ def _provenance(repo) -> Provenance:
     )
 
 
+def _txt(v) -> str | None:
+    """NaN-safe str coercion (strict pydantic rejects a float NaN for a str field)."""
+    return None if v is None or (isinstance(v, float) and v != v) else str(v)
+
+
 def build_segment_context(
     repo,
     segment_id: str,
@@ -111,7 +116,7 @@ def build_segment_context(
     names = segs.set_index("physical_id")["name"].to_dict()
     neighborhood = Neighborhood(
         hops=hops,
-        segments=[NeighborSeg(physical_id=p, name=names.get(p), hop=h) for p, h in nbrs[:50]],
+        segments=[NeighborSeg(physical_id=p, name=_txt(names.get(p)), hop=h) for p, h in nbrs[:50]],
     )
 
     sim = (
@@ -127,12 +132,12 @@ def build_segment_context(
         gaps.append("No model prediction for this segment (insufficient history).")
 
     def _f(v):
-        return None if v is None else float(v)
+        return None if v is None or (isinstance(v, float) and v != v) else float(v)
 
     return TrafficContext(
         as_of=str(m.get("as_of", "unknown")),
         generated_at=now_rfc3339(),
-        focus={"type": "segment", "id": segment_id, "name": d.get("name"), "zone": d.get("zone")},
+        focus={"type": "segment", "id": segment_id, "name": _txt(d.get("name")), "zone": _txt(d.get("zone"))},
         horizon_minutes=horizon_minutes,
         observed=Observed(
             cii=_f(d.get("cii")),
